@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605080554-git
+##@Version           :  202605080558-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605080554-git"
+VERSION="202605080558-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -961,26 +961,57 @@ EOF
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __show_info() {
-  local col=""
-  local truncate="$1"
+  local col="" truncate="$1" display_version="" pkmgr_bin=""
   [ -n "$COLUMNS" ] && col=$(($COLUMNS - 30)) || col=80
+  # Determine if this is a rolling-release distro
+  local _n
+  _n="$(printf '%s' "${DISTRO_NAME:-}" | tr '[:upper:]' '[:lower:]')"
+  case "$_n" in
+    *arch* | *manjaro* | *cachyos* | *arcolinux* | *endeavouros* | *artix* | \
+    *garuda* | *parabola* | *blackarch* | *tumbleweed* | *gentoo* | *void*)
+      display_version="rolling" ;;
+    *)
+      case "$PKMGR_TYPE" in
+        pacman | pamac | yay | xbps) display_version="rolling" ;;
+        *) display_version="${DISTRO_VERSION:-N/A}" ;;
+      esac ;;
+  esac
+  [ "$display_version" = "Version: Unknown" ] && display_version="N/A"
+  # Derive a short binary path for the active package manager
+  case "$PKMGR_TYPE" in
+    apt-get) pkmgr_bin="$(builtin type -P apt-get 2>/dev/null)" ;;
+    apt)     pkmgr_bin="$(builtin type -P apt 2>/dev/null)" ;;
+    pacman)  pkmgr_bin="$(builtin type -P pacman 2>/dev/null)" ;;
+    pamac)   pkmgr_bin="$(builtin type -P pamac 2>/dev/null)" ;;
+    yay)     pkmgr_bin="$(builtin type -P yay 2>/dev/null)" ;;
+    dnf)     pkmgr_bin="$(builtin type -P dnf 2>/dev/null)" ;;
+    yum)     pkmgr_bin="$(builtin type -P yum 2>/dev/null)" ;;
+    tdnf)    pkmgr_bin="$(builtin type -P tdnf 2>/dev/null)" ;;
+    apk)     pkmgr_bin="$(builtin type -P apk 2>/dev/null)" ;;
+    xbps)    pkmgr_bin="$(builtin type -P xbps-install 2>/dev/null)" ;;
+    brew)    pkmgr_bin="$(builtin type -P brew 2>/dev/null)" ;;
+    choco)   pkmgr_bin="$(builtin type -P choco 2>/dev/null)" ;;
+    *)       pkmgr_bin="unknown" ;;
+  esac
   printf_red "System info for $(hostname -f)         "
   printf_blue "Distribution:               $DISTRO_NAME"
   if [ -n "$CODE_NAME" ] && [ "$CODE_NAME" != "N/A" ]; then
     printf_yellow "Codename:                   $CODE_NAME"
   fi
-  printf_blue "Distro Version:             $DISTRO_VERSION"
+  printf_blue "Distro Version:             $display_version"
   printf_yellow "Kernel version              $KERNEL_VERSION"
   if [ "$truncate" = "truncate" ] || [ $col -le 80 ]; then
     truncate="true"
     printf_cyan "Repo:                       ${dotfilesrepo_url:0:$col}"
     printf_cyan "Repo Raw:                   ${dotfilesrepo_raw:0:$col}"
     printf_cyan "Package manager type:       $PKMGR_TYPE"
+    printf_cyan "Package manager bin:        ${pkmgr_bin:0:$col}"
   else
     truncate="false"
     printf_cyan "Repo:                       ${dotfilesrepo_url}"
-    printf_cyan "Repo:                       ${dotfilesrepo_raw}"
-
+    printf_cyan "Repo Raw:                   ${dotfilesrepo_raw}"
+    printf_cyan "Package manager type:       $PKMGR_TYPE"
+    printf_cyan "Package manager bin:        $pkmgr_bin"
   fi
   printf_blue "Node:                       $(builtin type -P node || __not_installed)"
   printf_blue "NPM:                        $(builtin type -P npm || builtin type -P yarn || __not_installed)"
