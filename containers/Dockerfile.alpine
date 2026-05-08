@@ -3,12 +3,14 @@ FROM casjaysdev/alpine:latest AS base
 # Install bash, git, and openrc
 RUN apk add --no-cache bash git openrc
 
-# Copy all files to the container
-COPY . /usr/local/share/CasjaysDev/scripts
+# Clone the scripts repository
+RUN git clone -q https://github.com/casjay-dotfiles/scripts /usr/local/share/CasjaysDev/scripts
 
-# Make scripts executable
+# Make scripts executable and run install
 RUN chmod +x /usr/local/share/CasjaysDev/scripts/bin/* && \
-    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh
+    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh && \
+    cd /usr/local/share/CasjaysDev/scripts && \
+    bash ./install.sh
 
 # Configure OpenRC (Alpine's init system)
 RUN rc-update add local default
