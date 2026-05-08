@@ -1429,9 +1429,17 @@ __initialize_variables() {
       }                                                                      #
       __pkgfix()            { printf_cyan "Fixing APK packages"; apk info | xargs apk fix || return 1; }                        #
       __keys_remove()       { printf_cyan "Removing APK keys"; sudo rm -f /etc/apk/keys/*.pub; return 0; }                      #
-      __keys_init()         { printf_cyan "Initializing APK keys"; apk add --allow-untrusted alpine-keys 2>/dev/null || return 0; } #
-      __keys_update()       { printf_cyan "Updating APK"; apk update 2>/dev/null || return 1; }                                 #
-      __keys_reinstall()    { printf_cyan "Reinstalling APK keys"; apk fix alpine-keys || return 1; }                         #
+      __keys_init() {                                                                                                          #
+        printf_cyan "Initializing APK keys"                                                                                  #
+        apk fix --allow-untrusted alpine-keys 2>/dev/null || return 1                                                       #
+        apk update || return 1                                                                                               #
+      }                                                                                                                      #
+      __keys_update()       { printf_cyan "Updating APK"; apk update 2>/dev/null || return 1; }                             #
+      __keys_reinstall() {                                                                                                   #
+        printf_cyan "Reinstalling APK keys"                                                                                  #
+        apk fix --allow-untrusted alpine-keys 2>/dev/null || return 1                                                       #
+        apk update || return 1                                                                                               #
+      }                                                                                                                      #
     # xbps-* voidlinux based setup
     elif [ -f "$(builtin type -P xbps-install 2>/dev/null)" ]; then                            #
       PKMGR_TYPE="xbps"                                                                        #
@@ -2029,7 +2037,7 @@ __execute_pkmgr() {
 
     check) # Check to see if python module is installed
       shift 1
-      exitCode
+      exitCode=0
       [ "$1" = "help" ] && printf_exit 2 0 "Check for pip module"
       declare -a LISTARRAY=("$@")
       [ "$PKMGR_LOG_ENABLED" = "true" ] && __init_log_status "pip" "__python_exists ${LISTARRAY[*]}"
