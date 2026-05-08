@@ -2259,6 +2259,11 @@ __is_package_installed() {
   opentofu) probe="tofu" ;;
   powershell) probe="pwsh" ;;
   minio_server) probe="minio" ;;
+  golang) probe="go" ;;
+  helix) probe="hx" ;;
+  nushell) probe="nu" ;;
+  miller) probe="mlr" ;;
+  nodejs) probe="node" ;;
   esac
 
   # Check common installation locations
@@ -2272,7 +2277,7 @@ __is_package_installed() {
   claude) [ -x "$HOME/.local/bin/claude" ] || [ -d "$HOME/.claude/bin" ] && return 0 ;;
   ollama) [ -d "/usr/local/share/ollama" ] || [ -f "/etc/systemd/system/ollama.service" ] && return 0 ;;
   zed) [ -d "${ZED_INSTALL_DIR:-$SETUPMGR_DEFAULT_SHARE_DIR/zed_editor}" ] && return 0 ;;
-  go) [ -d "${GO_INSTALL_DIR:-$SETUPMGR_DEFAULT_SHARE_DIR/go}" ] && return 0 ;;
+  golang | go) [ -d "${GO_INSTALL_DIR:-$SETUPMGR_DEFAULT_SHARE_DIR/go}" ] && return 0 ;;
   powershell) [ -d "${POWERSHELL_INSTALL_DIR}" ] && return 0 ;;
   esac
 
@@ -2318,6 +2323,8 @@ __remove_package() {
   case "$name" in
   asdf)
     [ -d "$ASDF_DIR" ] && __rm "$ASDF_DIR" && printf_green "Removed $name from $ASDF_DIR"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
+    __remove_file "/usr/local/bin/$name"
     ;;
   deno)
     __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
@@ -2329,13 +2336,14 @@ __remove_package() {
     ;;
   distrobox)
     [ -d "$DISTROBOX_HOME" ] && __rm "$DISTROBOX_HOME" && printf_green "Removed $name"
-    for bin in distrobox*; do
-      [ -f "$SETUPMGR_DEFAULT_BIN_DIR/$bin" ] && __rm "$SETUPMGR_DEFAULT_BIN_DIR/$bin"
+    for bin in "$SETUPMGR_DEFAULT_BIN_DIR"/distrobox* /usr/local/bin/distrobox*; do
+      [ -f "$bin" ] && __remove_file "$bin"
     done
     ;;
   dotnet)
     [ -d "$DOTNET_ROOT" ] && __rm "$DOTNET_ROOT" && printf_green "Removed $name from $DOTNET_ROOT"
-    [ -f "$SETUPMGR_DEFAULT_BIN_DIR/$name" ] && __rm "$SETUPMGR_DEFAULT_BIN_DIR/$name"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
+    __remove_file "/usr/local/bin/$name"
     ;;
   fnm)
     [ -d "$FNM_DIR" ] && __rm "$FNM_DIR" && printf_green "Removed $name from $FNM_DIR"
@@ -2361,14 +2369,11 @@ __remove_package() {
     [ -d "$rvm_path" ] && __rm "$rvm_path" && printf_green "Removed $name from $rvm_path"
     [ -f "$SETUPMGR_DEFAULT_BIN_DIR/rvm" ] && __rm "$SETUPMGR_DEFAULT_BIN_DIR/rvm"
     ;;
-  ripgrep)
-    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
-    __remove_file "/usr/local/bin/rg"
-    ;;
   bat | fd | delta | dust | exa | procs | starship | glow | just | zoxide | tokei | jless)
     local bin_var="$(echo "${name^^}_BIN_DIR" | tr '-' '_')"
     local bin_dir="${!bin_var}"
-    __remove_file "$bin_dir/$name"
+    [ -n "$bin_dir" ] && __remove_file "$bin_dir/$name"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
     __remove_file "/usr/local/bin/$name"
     ;;
   vagrant)
@@ -2414,13 +2419,44 @@ __remove_package() {
     local zed_dir="${ZED_INSTALL_DIR:-$SETUPMGR_DEFAULT_SHARE_DIR/zed_editor}"
     [ -d "$zed_dir" ] && __sudo rm -rf "$zed_dir" && printf_green "Removed zed from $zed_dir"
     ;;
-  go)
+  golang | go)
     __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/go"
     __remove_file "/usr/local/bin/go"
     __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/gofmt"
     __remove_file "/usr/local/bin/gofmt"
     local go_dir="${GO_INSTALL_DIR:-$SETUPMGR_DEFAULT_SHARE_DIR/go}"
     [ -d "$go_dir" ] && __sudo rm -rf "$go_dir" && printf_green "Removed go from $go_dir"
+    ;;
+  helix)
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/hx"
+    __remove_file "/usr/local/bin/hx"
+    local helix_dir="${SETUPMGR_DEFAULT_SHARE_DIR}/helix"
+    [ -d "$helix_dir" ] && __sudo rm -rf "$helix_dir" && printf_green "Removed helix from $helix_dir"
+    ;;
+  nushell)
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/nu"
+    __remove_file "/usr/local/bin/nu"
+    ;;
+  miller)
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/mlr"
+    __remove_file "/usr/local/bin/mlr"
+    ;;
+  nodejs)
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/volta"
+    __remove_file "/usr/local/bin/volta"
+    [ -d "$VOLTA_HOME" ] && __rm "$VOLTA_HOME" && printf_green "Removed nodejs (volta) from $VOLTA_HOME"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/node"
+    __remove_file "/usr/local/bin/node"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/npm"
+    __remove_file "/usr/local/bin/npm"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/npx"
+    __remove_file "/usr/local/bin/npx"
+    ;;
+  rustup)
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/rustup"
+    __remove_file "/usr/local/bin/rustup"
+    [ -d "$RUSTUP_HOME" ] && __rm "$RUSTUP_HOME" && printf_green "Removed rustup from $RUSTUP_HOME"
+    [ -d "$CARGO_HOME" ] && __rm "$CARGO_HOME" && printf_green "Removed cargo from $CARGO_HOME"
     ;;
   claude)
     # Run native binary's own uninstall first if available, then clean up
