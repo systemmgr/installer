@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605080558-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  WTFPL
@@ -118,8 +118,8 @@ _pkmgr() {
   local SHORTOPTS="-z -f"
   local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
   local LONGOPTS+="--force --enable-aur --raw --enable-log"
-  local ARRAY="keys check alias available install remove list curl script dotfiles upgrade export import clean "
-  local ARRAY+="init makecache search required silent cpan perl pip python gem ruby npm yarn lua go reinstall makepkg"
+  local ARRAY="keys check aliases available install remove list curl script dotfiles upgrade export import clean "
+  local ARRAY+="init makecache search required silent cpan perl pip python gem ruby npm yarn lua go reinstall bin info"
   local LIST=""
 
   _init_completion || return
@@ -183,7 +183,7 @@ _pkmgr() {
 
     keys)
       local prev="keys"
-      [ $cword -le 2 ] && COMPREPLY=($(compgen -W 'broken' -- "${cur}")) || COMPREPLY=($(compgen -W '' -- "${cur}"))
+      [ $cword -le 2 ] && COMPREPLY=($(compgen -W 'broken remove init update reinstall wtf' -- "${cur}")) || COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
 
     check)
@@ -212,7 +212,10 @@ _pkmgr() {
 
     install)
       local prev="install"
-      if [[ ${COMP_CWORD} -ge 2 ]]; then
+      if [[ ${COMP_CWORD} -eq 2 ]]; then
+        local packages=$(__get_available_packages)
+        COMPREPLY=($(compgen -W "fix ${packages}" -- "${cur}"))
+      elif [[ ${COMP_CWORD} -ge 3 ]]; then
         local packages=$(__get_available_packages)
         COMPREPLY=($(compgen -W "${packages}" -- "${cur}"))
       fi
@@ -361,11 +364,6 @@ _pkmgr() {
       COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
 
-    makepkg)
-      local prev="makepkg"
-      COMPREPLY=($(compgen -W 'install remove search' -- "${cur}"))
-      ;;
-
     reinstall)
       local prev="reinstall"
       if [[ ${COMP_CWORD} -ge 2 ]]; then
@@ -379,9 +377,9 @@ _pkmgr() {
       COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
 
-    alias)
-      local prev="alias"
-      COMPREPLY=($(compgen -W 'install remove' -- "${cur}"))
+    aliases)
+      local prev="aliases"
+      COMPREPLY=($(compgen -W '--save' -- "${cur}"))
       ;;
 
     bin)

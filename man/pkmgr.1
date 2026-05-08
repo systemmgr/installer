@@ -1,11 +1,11 @@
 .\" Manpage for pkmgr
-.TH man 1 "02 February 2026" "202602020740-git" "pkmgr"
+.TH man 1 "08 May 2026" "202605080558-git" "pkmgr"
 
 .SH NAME
 pkmgr \- Universal package manager wrapper for multiple Linux distributions
 
 .SH DESCRIPTION
-A unified package management utility that provides consistent interface across different Linux distributions and package managers. Supports apt, dnf/yum, pacman, zypper, apk, and language-specific package managers (pip, gem, npm, cpan).
+A unified package management utility that provides a consistent interface across different Linux distributions and package managers. Supports apt/apt-get, dnf/yum, tdnf, pacman/pamac/yay, apk, xbps, brew, and language-specific package managers (pip, gem, npm, cpan, lua, go).
 
 .SH SYNOPSIS
 pkmgr [options] [command] [arguments...]
@@ -18,11 +18,17 @@ Search for a package in repositories
 .B install <package>
 Install one or more packages
 .TP
+.B install fix
+Fix broken package installations (dpkg --configure, apt -f install, dnf distro-sync, etc.)
+.TP
 .B remove <package>
 Remove installed package
 .TP
 .B update
 Update all installed packages
+.TP
+.B upgrade
+Alias for update
 .TP
 .B clean
 Remove cached package files
@@ -30,19 +36,43 @@ Remove cached package files
 .B makecache
 Update package repository lists
 .TP
+.B init
+Initialize system: clean cache, refresh repos, and upgrade packages
+.TP
 .B list <file>
 Install packages from a list file
 .TP
-.B silent <package>
+.B reinstall
+Reinstall all packages tracked by pkmgr
+.TP
+.B silent install <package>
 Silently install package without prompts
 .TP
 .B silent remove <package>
 Silently remove package
 .TP
-.B silent upgrade <package>
-Silently upgrade package
+.B silent upgrade
+Silently upgrade all packages
 
 .SH ADVANCED COMMANDS
+.TP
+.B info
+Show system and package manager information
+.TP
+.B bin [args...]
+Pass arguments directly to the underlying package manager binary
+.TP
+.B check
+Check for available updates
+.TP
+.B available
+List available packages
+.TP
+.B export
+Export list of installed packages
+.TP
+.B import <file>
+Install packages from an exported list file
 .TP
 .B dotfiles [type]
 Install required packages for dotfiles (e.g., pkmgr dotfiles git)
@@ -56,8 +86,37 @@ Run installation script from local path or URL
 .B cron add
 Schedule automatic daily package updates
 .TP
+.B cron remove
+Remove scheduled automatic updates
+.TP
+.B cron run
+Run the cron update task immediately
+.TP
 .B aliases
-List bash aliases for package management
+List and optionally save bash aliases for package management
+.TP
+.B required <package>
+Install a required package (used internally by other scripts)
+
+.SH KEY MANAGEMENT COMMANDS
+.TP
+.B keys broken
+Attempt to fix broken or expired package signing keys
+.TP
+.B keys remove
+Remove all package signing keys
+.TP
+.B keys init
+Initialize package signing keys from scratch
+.TP
+.B keys update
+Update existing package signing keys
+.TP
+.B keys reinstall
+Reinstall the distribution keyring package(s)
+.TP
+.B keys wtf
+Temporarily disable all package signature verification to allow installation; re-enables afterward
 
 .SH LANGUAGE-SPECIFIC PACKAGE MANAGERS
 .TP
@@ -72,6 +131,12 @@ Install Ruby gem (e.g., pkmgr gem jekyll)
 .TP
 .B npm <package>
 Install Node.js package via npm (e.g., pkmgr npm express)
+.TP
+.B lua <module>
+Install Lua rock via luarocks
+.TP
+.B go <module>
+Install Go module via go get
 
 .SH OPTIONS
 .TP
@@ -96,8 +161,14 @@ Remove formatting from output
 .B --force
 Force package installation/operation
 .TP
+.B --silent
+Suppress non-essential output
+.TP
+.B --enable-log
+Enable logging of package operations to the log directory
+.TP
 .B --enable-aur
-Enable AUR (Arch User Repository) on Arch-based systems
+Enable AUR (Arch User Repository) support on Arch-based systems
 
 .SH EXAMPLES
 .TP
@@ -106,6 +177,9 @@ Search for vim package
 .TP
 .B pkmgr install vim neovim git
 Install multiple packages
+.TP
+.B pkmgr install fix
+Fix broken package state
 .TP
 .B pkmgr remove apache2
 Remove Apache web server
@@ -139,6 +213,18 @@ Install Ruby gems
 .TP
 .B pkmgr cron add
 Enable automatic daily package updates
+.TP
+.B pkmgr keys broken
+Attempt to fix broken/expired signing keys
+.TP
+.B pkmgr keys wtf
+Temporarily disable signature verification for a single update
+.TP
+.B pkmgr info
+Display system and package manager information
+.TP
+.B pkmgr bin --version
+Run the underlying package manager with --version
 
 .SH SUPPORTED PACKAGE MANAGERS
 pkmgr automatically detects and uses the appropriate package manager:
@@ -146,28 +232,34 @@ pkmgr automatically detects and uses the appropriate package manager:
 .SS Linux Distribution Managers
 .TP
 .B apt/apt-get
-Debian, Ubuntu, Linux Mint, Pop!_OS
+Debian, Ubuntu, Linux Mint, Pop!_OS, and derivatives
 .TP
 .B dnf/yum
 Fedora, RHEL, CentOS, Rocky Linux, AlmaLinux
 .TP
-.B pacman
-Arch Linux, Manjaro, EndeavourOS
+.B tdnf
+VMware Photon OS
 .TP
-.B zypper
-openSUSE, SLES
+.B pacman
+Arch Linux, EndeavourOS, CachyOS, ArcoLinux, Artix
+.TP
+.B pamac
+Manjaro Linux
+.TP
+.B yay
+Arch-based systems with AUR support (via --enable-aur)
 .TP
 .B apk
 Alpine Linux
 .TP
-.B emerge
-Gentoo
-.TP
-.B pkg
-FreeBSD
+.B xbps
+Void Linux
 .TP
 .B brew
 macOS, Linux (Homebrew)
+.TP
+.B choco
+Windows (Chocolatey)
 
 .SS Language Package Managers
 .TP
@@ -184,21 +276,21 @@ Ruby gems
 Node.js packages
 .TP
 .B go get
-Go packages
+Go modules
 .TP
-.B lua
+.B luarocks
 Lua modules
 
 .SH CONFIGURATION
 .TP
 .B Auto-Detection
-Automatically detects system package manager
+Automatically detects the system package manager at startup
 .TP
 .B Sudo Handling
-Automatically uses sudo when required
+Automatically uses sudo when required for system-level operations
 .TP
 .B AUR Support
-Can enable AUR support on Arch-based systems with --enable-aur
+Enable AUR support on Arch-based systems with --enable-aur; uses yay if available
 
 .SH FILES
 .TP
@@ -206,21 +298,33 @@ Can enable AUR support on Arch-based systems with --enable-aur
 User configuration file
 .TP
 .I ~/.local/log/pkmgr/
-Log directory for package operations
+Log directory for package operations (when --enable-log is active)
 .TP
 .I ~/.cache/pkmgr/
 Cache directory
+.TP
+.I /usr/local/etc/pkmgr/lists/
+Installed package tracking directory
 
 .SH ENVIRONMENT VARIABLES
 .TP
 .B PKMGR_CONFIG_DIR
-Configuration directory
+Configuration directory (default: ~/.config/myscripts/pkmgr)
 .TP
 .B PKMGR_REQUIRE_SUDO
 Whether sudo is required (auto-detected)
 .TP
 .B PKMGR_FORCE
 Force operations without prompts
+.TP
+.B PKMGR_LOG_ENABLED
+Set to "true" to enable operation logging (also set by --enable-log)
+.TP
+.B PKMGR_GIT_REPO
+Remote repository URL used by dotfiles and curl commands
+.TP
+.B PKMGR_GIT_BRANCH
+Branch to use for remote package lists (default: main)
 
 .SH NOTES
 pkmgr provides a unified interface across different Linux distributions, eliminating the need to remember distribution-specific package manager commands.
@@ -229,10 +333,12 @@ The tool automatically handles sudo requirements based on the operation and syst
 
 Silent mode (silent command) is useful for automation and scripting where interactive prompts should be avoided.
 
+Rolling release distributions (Arch, Void, openSUSE Tumbleweed, etc.) display "rolling" as their version in pkmgr info output.
+
 .SH REQUIREMENTS
 .TP
 .B Distribution package manager
-apt, dnf, pacman, zypper, etc. (auto-detected)
+apt, dnf, pacman, apk, xbps, etc. (auto-detected)
 .TP
 .B sudo
 For system-level package operations
@@ -244,7 +350,7 @@ For URL-based package lists
 WTFPL
 
 .SH BUGS
-No known bugs. AUR support pending full implementation.
+No known bugs.
 
 .SH REPORTING BUGS
 https://github.com/casjay-dotfiles/scripts/issues
