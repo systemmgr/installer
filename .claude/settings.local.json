@@ -149,7 +149,10 @@
       "Bash(wait)",
       "Bash(docker build *)",
       "Bash(jobs -l)",
-      "Bash(kill 2086979 2086947)"
+      "Bash(kill 2086979 2086947)",
+      "Bash(cp /root/Projects/local/scriptsmgr/detecthotspot/bin/captive-auth /root/Projects/github/casjay-dotfiles/scripts/bin/captive-auth)",
+      "Bash(cp /root/Projects/local/scriptsmgr/detecthotspot/completions/_captive_auth_completions.bash /root/Projects/github/casjay-dotfiles/scripts/completions/_captive_auth_completions.bash)",
+      "Bash(cp /root/Projects/local/scriptsmgr/detecthotspot/man/captive-auth.1 /root/Projects/github/casjay-dotfiles/scripts/man/captive-auth.1)"
     ],
     "deny": [
       "Bash(git commit:*)",

@@ -1,0 +1,104 @@
+.\" Manpage for captive-auth
+.TH man 1 "08 May 2026" "202605080831-git" "captive-auth"
+
+.SH NAME
+captive-auth \- detect and auto-authenticate through captive portal hotspots
+
+.SH DESCRIPTION
+Checks for internet connectivity and, if a captive portal is detected,
+attempts to authenticate automatically by fetching the portal page and
+submitting its accept form.
+Falls back to opening a browser if automatic authentication fails.
+
+.SH SYNOPSIS
+captive-auth [options]
+
+.SH OPTIONS
+.TP
+.B \-\-help
+Display the full help.
+.TP
+.B \-\-version
+Display current version.
+.TP
+.B \-\-config
+Create user settings file.
+.TP
+.B \-\-options
+Show all available options.
+.TP
+.B \-\-no\-auto\-auth
+Disable automatic form submission; only detect and report the portal URL.
+.TP
+.B \-\-no\-browser
+Disable the browser fallback when auto\-auth fails.
+.TP
+.B \-\-debug
+Output debugging information.
+.TP
+.B \-\-raw
+Removes all formatting.
+
+.SH EXIT STATUS
+.TP
+.B 0
+Connected (already online or authentication succeeded).
+.TP
+.B 1
+Captive portal detected; authentication failed or was skipped.
+.TP
+.B 2
+No network connectivity.
+
+.SH CONFIGURATION
+Settings are stored in
+.I ~/.config/myscripts/captive-auth/settings.conf
+and include:
+.PP
+.B CAPTIVE_AUTH_AUTO_AUTH
+\- Enable/disable automatic form submission (default: yes)
+.PP
+.B CAPTIVE_AUTH_OPEN_BROWSER
+\- Enable/disable browser fallback (default: yes)
+.PP
+.B CAPTIVE_AUTH_CHECK_URL
+\- Connectivity probe URL (default: http://connectivitycheck.gstatic.com/generate_204)
+.PP
+.B CAPTIVE_AUTH_RETRY_WAIT
+\- Seconds to wait after auth attempt before re-checking (default: 2)
+
+.SH EXAMPLES
+.TP
+.B captive-auth
+Check connectivity and auto-authenticate if behind a portal.
+.TP
+.B captive-auth \-\-no\-auto\-auth
+Detect portal and print the URL without submitting anything.
+.TP
+.B captive-auth \-\-no\-browser
+Auto-auth only; do not open a browser if it fails.
+.TP
+.B captive-auth \-\-help
+
+.SH FILES
+.TP
+.I
+~/.config/myscripts/captive-auth/settings.conf
+.TP
+.I
+/usr/local/bin/captive-auth
+
+.SH TODO
+Better documentation
+
+.SH LICENSE
+WTFPL
+
+.SH BUGS
+No known bugs.
+
+.SH REPORTING BUGS
+https://github.com/casjay-dotfiles/issues
+
+.SH AUTHOR
+Currently maintained by Jason Hempstead <jason@casjaysdev.pro>
