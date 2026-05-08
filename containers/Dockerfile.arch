@@ -1,26 +1,25 @@
-FROM casjaysdev/alpine:latest AS base
+FROM casjaysdev/arch:latest AS base
 
-# Install bash, git, and openrc
-RUN apk add --no-cache bash git openrc
+# Install bash, git, and systemd
+RUN pacman -Syu --noconfirm bash git systemd
 
 # Copy all files to the container
 COPY . /usr/local/share/CasjaysDev/scripts
 
-# Make scripts executable and run install
+# Make scripts executable
 RUN chmod +x /usr/local/share/CasjaysDev/scripts/bin/* && \
-    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh && \
-    cd /usr/local/share/CasjaysDev/scripts && \
-    bash ./install.sh
+    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh
 
-# Configure OpenRC (Alpine's init system)
-RUN rc-update add local default
+# Configure systemd
+RUN systemctl set-default multi-user.target && \
+    systemctl mask systemd-udev-trigger.service systemd-udevd.service
 
 FROM scratch
 
 # Add labels and metadata
 LABEL maintainer="Jason Hempstead <jason@casjaysdev.pro>"
-LABEL org.opencontainers.image.title="CasjaysDev Scripts - Alpine"
-LABEL org.opencontainers.image.description="Collection of useful scripts and tools for system administration and development (Alpine Linux)"
+LABEL org.opencontainers.image.title="CasjaysDev Scripts - Arch Linux"
+LABEL org.opencontainers.image.description="Collection of useful scripts and tools for system administration and development (Arch Linux)"
 LABEL org.opencontainers.image.version="202510070821-git"
 LABEL org.opencontainers.image.authors="Jason Hempstead <jason@casjaysdev.pro>"
 LABEL org.opencontainers.image.vendor="CasjaysDev"
@@ -28,7 +27,7 @@ LABEL org.opencontainers.image.licenses="WTFPL"
 LABEL org.opencontainers.image.url="https://github.com/casjay-dotfiles/scripts"
 LABEL org.opencontainers.image.source="https://github.com/casjay-dotfiles/scripts"
 LABEL org.opencontainers.image.documentation="https://github.com/casjay-dotfiles/scripts/blob/main/README.md"
-LABEL org.opencontainers.image.base.name="casjaysdev/alpine:latest"
+LABEL org.opencontainers.image.base.name="casjaysdev/arch:latest"
 
 # Copy everything from base stage
 COPY --from=base / /
@@ -39,7 +38,7 @@ WORKDIR /root
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD bash -c 'echo "Container is healthy"' || exit 1
 
-# Alpine uses OpenRC instead of systemd
+# Arch Linux uses systemd
 ENTRYPOINT ["/sbin/init"]
 # Keep container running with a persistent process
 CMD ["bash", "-c", "while true; do sleep 30; done"]

@@ -6,11 +6,9 @@ RUN apk add --no-cache bash git openrc
 # Copy all files to the container
 COPY . /usr/local/share/CasjaysDev/scripts
 
-# Make scripts executable and run install
+# Make scripts executable
 RUN chmod +x /usr/local/share/CasjaysDev/scripts/bin/* && \
-    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh && \
-    cd /usr/local/share/CasjaysDev/scripts && \
-    bash ./install.sh
+    chmod +x /usr/local/share/CasjaysDev/scripts/install.sh
 
 # Configure OpenRC (Alpine's init system)
 RUN rc-update add local default
