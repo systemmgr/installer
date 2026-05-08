@@ -147,7 +147,9 @@
       "Bash(python3 *)",
       "Bash(podman --version)",
       "Bash(wait)",
-      "Bash(docker build *)"
+      "Bash(docker build *)",
+      "Bash(jobs -l)",
+      "Bash(kill 2086979 2086947)"
     ],
     "deny": [
       "Bash(git commit:*)",

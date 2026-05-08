@@ -1,13 +1,34 @@
 version: '3.8'
 
 services:
-  almalinux:
+  default:
     build:
       context: ..
       dockerfile: containers/Dockerfile
-    image: casjaysdev/scripts:almalinux
-    container_name: casjaysdev-scripts-almalinux
+    image: casjaysdev/scripts:latest
+    container_name: casjaysdev-scripts-default
     privileged: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - scripts-network
+
+  alma:
+    build:
+      context: ..
+      dockerfile: containers/Dockerfile.alma
+    image: casjaysdev/scripts:alma
+    container_name: casjaysdev-scripts-alma
+    privileged: true
+    tty: true
+    stdin_open: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]
@@ -25,6 +46,65 @@ services:
     image: casjaysdev/scripts:alpine
     container_name: casjaysdev-scripts-alpine
     privileged: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - scripts-network
+
+  arch:
+    build:
+      context: ..
+      dockerfile: containers/Dockerfile.arch
+    image: casjaysdev/scripts:arch
+    container_name: casjaysdev-scripts-arch
+    privileged: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - scripts-network
+
+  debian:
+    build:
+      context: ..
+      dockerfile: containers/Dockerfile.debian
+    image: casjaysdev/scripts:debian
+    container_name: casjaysdev-scripts-debian
+    privileged: true
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    networks:
+      - scripts-network
+
+  ubuntu:
+    build:
+      context: ..
+      dockerfile: containers/Dockerfile.ubuntu
+    image: casjaysdev/scripts:ubuntu
+    container_name: casjaysdev-scripts-ubuntu
+    privileged: true
+    tty: true
+    stdin_open: true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "bash", "-c", "setupmgr --version || exit 1"]

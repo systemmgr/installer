@@ -158,7 +158,7 @@ run_postinst() {
   [ -f "/etc/casjaysdev/.legal_updated" ] || [ "$RESET_LEGAL" != "yes" ] || { [ -f "$motdDir/legal/000.txt" ] && rm -Rf "$motdDir/legal/000.txt"; }
   ln_rm "$SHARE/applications/"
   git config --global pull.rebase 'true'
-  systemctl enable --now vnstat &>/dev/null
+  [ -d /run/systemd/system ] && systemctl enable --now vnstat &>/dev/null || true
   mkdir -p "$HOME/.local/backups/systemmgr/installer/pam"
   mkdir -p "/usr/local/share/CasjaysDev/apps/fontmgr"
   mkdir -p "$motdDir/motd" "$motdDir/issue" "$motdDir/legal" "$bannerDir" "$verDir"
@@ -209,15 +209,15 @@ run_postinst() {
     [ -f "/usr/local/bin/$file" ] || ln_sf "$APPDIR/sources/$file" "/usr/local/bin/$file"
   done
   for mgr in devenvmgr dfmgr dockermgr fontmgr iconmgr passmgr pkmgr systemmgr thememgr wallpapermgr; do
-    eval "$mgr" --config &>/dev/null
+    timeout 30 bash -c "eval $mgr --config" &>/dev/null || true
   done
   replace "$motdDir/" "MYHOSTIP_4" "$CURRENT_IP_4"
   replace "$motdDir/" "MYHOSTIP_6" "${CURRENT_IP_6:-::1}"
   replace "$motdDir/" "MY_FULL_HOSTNAME" "$(hostname -f)"
   replace "$motdDir/" "MY_SHORT_HOSTNAME" "$(hostname -s)"
-  cmd_exists update-ip && update-ip &>/dev/null
-  cmd_exists update-motd && update-motd &>/dev/null
-  cmd_exists dockermgr && dockermgr --cron &>/dev/null
+  cmd_exists update-ip && timeout 10 update-ip &>/dev/null || true
+  cmd_exists update-motd && timeout 10 update-motd &>/dev/null || true
+  cmd_exists dockermgr && timeout 30 dockermgr --cron &>/dev/null || true
   grep 'Defaults.*.env_reset' "/etc/sudoers" | grep -q '!' || sudo sed -i 's|env_reset|!env_reset|g' "/etc/sudoers"
   grep 'Defaults.*.secure_path' "/etc/sudoers" && sudo sed -i 's|secure_path =.*|secure_path = "/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin"|g' "/etc/sudoers"
   rm -f "$bashCompDir/_my_scripts_completions"
