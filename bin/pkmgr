@@ -1865,7 +1865,7 @@ __execute_pkmgr() {
     # When AUR is enabled, update AUR packages after the system update
     if [ "$ENABLE_AUR" = "true" ] && __cmd_exists yay; then
       printf_cyan "Updating AUR packages"
-      sudo -u "${RUN_USER:-$USER}" yay -Ayu --noconfirm || exitCode=$((exitCode + 1))
+      sudo -u "${RUN_USER:-$USER}" yay -Sua --noconfirm || exitCode=$((exitCode + 1))
     fi
     [ $exitCode -eq 0 ] && __write_log_status "upgrade was successful" || __write_log_status "Failed with status: $exitCode"
     exit ${exitCode:-0}
