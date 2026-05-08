@@ -145,7 +145,9 @@
       "Bash(/root/Projects/github/casjay-dotfiles/scripts/bin/ex --version)",
       "Bash(/root/Projects/github/casjay-dotfiles/scripts/bin/ex --help)",
       "Bash(python3 *)",
-      "Bash(podman --version)"
+      "Bash(podman --version)",
+      "Bash(wait)",
+      "Bash(docker build *)"
     ],
     "deny": [
       "Bash(git commit:*)",

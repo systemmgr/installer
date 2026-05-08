@@ -475,7 +475,7 @@ __exec_unbuffered() {
   if [ -n "$log_file" ] && [ -d "$(dirname "$log_file")" ]; then
     # With logging
     if command -v script >/dev/null 2>&1; then
-      script -qefc "$cmd" /dev/null 2>&1 | tee -a "$log_file"
+      script -qefc "bash -c '$cmd'" /dev/null 2>&1 | tee -a "$log_file"
       exit_code=${PIPESTATUS[0]}
     elif command -v stdbuf >/dev/null 2>&1; then
       stdbuf -o0 -e0 bash -c "$cmd" 2>&1 | tee -a "$log_file"
@@ -487,7 +487,7 @@ __exec_unbuffered() {
   else
     # Without logging - direct execution
     if command -v script >/dev/null 2>&1; then
-      script -qefc "$cmd" /dev/null 2>&1
+      script -qefc "bash -c '$cmd'" /dev/null 2>&1
       exit_code=$?
     elif command -v stdbuf >/dev/null 2>&1; then
       stdbuf -o0 -e0 bash -c "$cmd" 2>&1
