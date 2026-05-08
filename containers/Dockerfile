@@ -1,7 +1,7 @@
 FROM casjaysdev/almalinux:latest AS base
 
 # Install bash and systemd
-RUN yum install -yy bash systemd
+RUN yum install -yy bash git systemd
 
 # Copy all files to the container
 COPY . /usr/local/share/CasjaysDev/scripts
@@ -15,7 +15,7 @@ RUN chmod +x /usr/local/share/CasjaysDev/scripts/bin/* && \
 # Enable systemd
 RUN systemctl set-default multi-user.target && systemctl mask systemd-udev-trigger.service systemd-udevd.service
 
-FROM casjaysdev/almalinux:latest
+FROM scratch
 
 # Add labels and metadata
 LABEL maintainer="Jason Hempstead <jason@casjaysdev.pro>"

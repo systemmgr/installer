@@ -1,9 +1,9 @@
-# gitignore created on 02/24/23 at 00:39
+# gitignore created on 05/08/26 at 04:50
 # Disable reminder in prompt
 ignoredirmessage
 
-# Disable reminder in prompt
-ignoredirmessage
+# ignore .build_failed files
+**/.build_failed*
 
 # OS generated files
 ### Linux ###
@@ -23,7 +23,7 @@ ignoredirmessage
 
 ### macOS ###
 # General
-.DS_Store
+.DS_Store?
 .AppleDouble
 .LSOverride
 
@@ -73,11 +73,12 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
+# misc
+!*/README*
+!inc/main.bash
+
 # Windows shortcuts
 *.lnk
-
-# Other
-**/.installed
 
 # ignore commit message
 **/.gitcommit
@@ -87,7 +88,6 @@ $RECYCLE.BIN/
 
 # ignore .bak files
 **/*.bak
-**/*.backup
 
 # ignore .no_push files
 **/.no_push
@@ -95,11 +95,10 @@ $RECYCLE.BIN/
 # ignore .no_git files
 **/.no_git
 
+# ignore .installed files
+**/.installed
+
 # ignore work in progress files
 **/*.rewrite.sh
 **/*.refactor.sh
-*REFACTOR.md
-
-# ignore rootfs
-./rootfs/**
 
