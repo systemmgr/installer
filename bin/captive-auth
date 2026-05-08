@@ -436,25 +436,209 @@ __cauth_get_portal_url() {
   return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Fetch the captive portal page, parse the first form, and submit it
+# Identify portal vendor from hostname
+__cauth_detect_vendor() {
+  local host
+  host=$(printf '%s' "$1" | grep -oE 'https?://[^/]+' | sed 's|https\?://||;s|:[0-9]*$||')
+  case "$host" in
+    *.arubanetworks.com) printf 'aruba' ;;
+    *.meraki.com|*.merakioffline.com) printf 'meraki' ;;
+    *.fortinet.com|*.fortigate.com) printf 'fortinet' ;;
+    # on-prem FortiGate portals land on firewall IPs; detect by path instead
+    *) printf 'unknown' ;;
+  esac
+}
+
+# Extract a named hidden-input value from collapsed HTML
+__cauth_field() {
+  local html="$1" name="$2"
+  printf '%s' "$html" \
+    | grep -oiE "<input[^>]+>" \
+    | grep -iE "name=['\"]?${name}['\"]?" \
+    | grep -oiE "value=['\"][^'\"]*['\"]" \
+    | sed "s/value=//;s/['\"]//g" \
+    | head -1
+}
+
+# Aruba Central cloud guest portal
+# Extracts the capture= token from the URL and POSTs the accept form.
+# No HTML fetch required — all needed data is in the redirect URL.
+__cauth_auth_aruba() {
+  local portal_url="$1" cookie_file="$2" ua="$3"
+  local capture_token login_url http_code
+
+  capture_token=$(printf '%s' "$portal_url" | grep -oE '[?&]capture=[^&]+' | sed 's/[?&]capture=//')
+  [ -z "$capture_token" ] && return 1
+
+  login_url=$(printf '%s' "$portal_url" | sed 's/[?].*//')
+  printf_cyan "Aruba portal — submitting accept to: $login_url"
+
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -L \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -b "$cookie_file" -A "$ua" \
+    -e "$portal_url" \
+    --data-urlencode "buttonClicked=4" \
+    --data-urlencode "capture=${capture_token}" \
+    --data-urlencode "redirect_url=" \
+    --data-urlencode "err_flag=0" \
+    --data-urlencode "err_msg=" \
+    --data-urlencode "info_flag=0" \
+    --data-urlencode "info_msg=" \
+    "$login_url" 2>/dev/null)
+
+  [ "${http_code:-000}" != "000" ]
+}
+
+# Cisco Meraki splash page
+# Fetches the page to collect node_id/gateway_id then POSTs to /splash/grant_access.
+__cauth_auth_meraki() {
+  local portal_url="$1" cookie_file="$2" ua="$3"
+  local tmphtml html_flat base_url node_id gateway_id http_code
+  local -a curl_data=()
+
+  tmphtml="$CAPTIVE_AUTH_TEMP_DIR/meraki_$$.html"
+  curl -s -L -o "$tmphtml" \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -A "$ua" \
+    "$portal_url" 2>/dev/null || { rm -f "$tmphtml"; return 1; }
+  [ -s "$tmphtml" ] || { rm -f "$tmphtml"; return 1; }
+  html_flat=$(tr '\n' ' ' < "$tmphtml")
+  rm -f "$tmphtml"
+
+  base_url=$(printf '%s' "$portal_url" | grep -oE '^https?://[^/]+')
+  node_id=$(__cauth_field "$html_flat" "node_id")
+  gateway_id=$(__cauth_field "$html_flat" "gateway_id")
+
+  curl_data+=(--data-urlencode "commit=Accept")
+  [ -n "$node_id" ]    && curl_data+=(--data-urlencode "node_id=${node_id}")
+  [ -n "$gateway_id" ] && curl_data+=(--data-urlencode "gateway_id=${gateway_id}")
+
+  printf_cyan "Meraki splash — submitting accept to: ${base_url}/splash/grant_access"
+
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -L \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -b "$cookie_file" -A "$ua" \
+    -e "$portal_url" \
+    "${curl_data[@]}" \
+    "${base_url}/splash/grant_access" 2>/dev/null)
+
+  [ "${http_code:-000}" != "000" ]
+}
+
+# Fortinet FortiGate captive portal
+# Extracts the magic token from the page and POSTs to /fgtauth.
+# Also handles on-prem portals detected by /fgtauth path rather than hostname.
+__cauth_auth_fortinet() {
+  local portal_url="$1" cookie_file="$2" ua="$3"
+  local tmphtml html_flat base_url magic http_code
+
+  tmphtml="$CAPTIVE_AUTH_TEMP_DIR/forti_$$.html"
+  curl -s -L -o "$tmphtml" \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -A "$ua" \
+    "$portal_url" 2>/dev/null || { rm -f "$tmphtml"; return 1; }
+  [ -s "$tmphtml" ] || { rm -f "$tmphtml"; return 1; }
+  html_flat=$(tr '\n' ' ' < "$tmphtml")
+  rm -f "$tmphtml"
+
+  magic=$(__cauth_field "$html_flat" "magic")
+  [ -z "$magic" ] && magic=$(printf '%s' "$portal_url" | grep -oE '[?&]magic=[^&]+' | sed 's/[?&]magic=//')
+  [ -z "$magic" ] && return 1
+
+  base_url=$(printf '%s' "$portal_url" | grep -oE '^https?://[^/]+')
+  printf_cyan "FortiGate portal — submitting accept to: ${base_url}/fgtauth"
+
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -L \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -b "$cookie_file" -A "$ua" \
+    -e "$portal_url" \
+    --data-urlencode "magic=${magic}" \
+    --data-urlencode "username=" \
+    --data-urlencode "password=" \
+    "${base_url}/fgtauth" 2>/dev/null)
+
+  [ "${http_code:-000}" != "000" ]
+}
+
+# JS-rendered portal fallback
+# Scans raw HTML for meta-refresh and window.location redirects that
+# a headless curl would miss, and follows them.
+__cauth_auth_js_fallback() {
+  local portal_url="$1" html_flat="$2" cookie_file="$3" ua="$4"
+  local target http_code
+
+  # meta http-equiv="refresh" content="0;url=..."
+  target=$(printf '%s' "$html_flat" \
+    | grep -oiE '<meta[^>]+http-equiv=["\047]?refresh["\047]?[^>]+>' \
+    | grep -oiE 'url=[^"'"'"' >]+' \
+    | sed 's/url=//I;s/["\047]//g' \
+    | head -1)
+
+  if [ -z "$target" ]; then
+    # window.location[.href] = "..."
+    target=$(printf '%s' "$html_flat" \
+      | grep -oiE 'window\.location(\.href)?\s*=\s*["'"'"'][^"'"'"']+["'"'"']' \
+      | grep -oiE '"[^"]+"|'"'"'[^'"'"']+'"'"'' \
+      | tr -d '"'"'" \
+      | grep '^http' \
+      | head -1)
+  fi
+
+  [ -z "$target" ] && return 1
+
+  printf_cyan "JS redirect detected — following to: $target"
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -L \
+    --max-time 15 --connect-timeout 5 \
+    -c "$cookie_file" -b "$cookie_file" -A "$ua" \
+    -e "$portal_url" \
+    "$target" 2>/dev/null)
+
+  [ "${http_code:-000}" != "000" ]
+}
+
+# Fetch the captive portal page, parse the first form, and submit it.
+# Order: vendor-specific handler → JS redirect fallback → generic form parse.
 __cauth_auto_auth() {
   local portal_url="$1"
   local cookie_file="$CAPTIVE_AUTH_TEMP_DIR/portal_cookies.txt"
   local ua="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
   local tmphtml="$CAPTIVE_AUTH_TEMP_DIR/portal_$$.html"
-  local html_flat form_tag action method base_url http_code
+  local html_flat form_tag action method base_url http_code vendor
 
+  vendor=$(__cauth_detect_vendor "$portal_url")
+
+  # Vendor-specific handlers that know the submission protocol
+  case "$vendor" in
+    aruba)
+      __cauth_auth_aruba "$portal_url" "$cookie_file" "$ua" && return 0
+      ;;
+    meraki)
+      __cauth_auth_meraki "$portal_url" "$cookie_file" "$ua" && return 0
+      ;;
+    fortinet)
+      __cauth_auth_fortinet "$portal_url" "$cookie_file" "$ua" && return 0
+      ;;
+  esac
+
+  # Also detect on-prem FortiGate by path (/fgtauth) regardless of hostname
+  if [[ "$portal_url" == */fgtauth* ]]; then
+    __cauth_auth_fortinet "$portal_url" "$cookie_file" "$ua" && return 0
+  fi
+
+  # Fetch HTML for fallback paths
   curl -s -L -o "$tmphtml" \
     --max-time 15 --connect-timeout 5 \
     -c "$cookie_file" -A "$ua" \
     "$portal_url" 2>/dev/null || { rm -f "$tmphtml"; return 1; }
 
   [ -s "$tmphtml" ] || { rm -f "$tmphtml"; return 1; }
-
-  # Collapse to single line so grep works across multi-line tags
   html_flat=$(tr '\n' ' ' < "$tmphtml")
   rm -f "$tmphtml"
 
+  # JS redirect fallback (meta-refresh, window.location)
+  __cauth_auth_js_fallback "$portal_url" "$html_flat" "$cookie_file" "$ua" && return 0
+
+  # Generic form parse
   base_url=$(printf '%s' "$portal_url" | grep -oE '^https?://[^/]+')
 
   form_tag=$(printf '%s' "$html_flat" | grep -oiE '<form[^>]+>' | head -1)
