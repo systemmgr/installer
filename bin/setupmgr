@@ -2339,7 +2339,8 @@ __remove_package() {
     ;;
   fnm)
     [ -d "$FNM_DIR" ] && __rm "$FNM_DIR" && printf_green "Removed $name from $FNM_DIR"
-    [ -f "$HOME/.local/bin/$name" ] && __rm "$HOME/.local/bin/$name"
+    __remove_file "$SETUPMGR_DEFAULT_BIN_DIR/$name"
+    __remove_file "/usr/local/bin/$name"
     ;;
   nvm)
     [ -d "$NVM_DIR" ] && __rm "$NVM_DIR" && printf_green "Removed $name from $NVM_DIR"
