@@ -66,7 +66,7 @@ fi
 user_install && __options "$@"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # import system variables
-[ -f "/usr/local/bin/detectostype" ] && . "/usr/local/bin/detectostype"
+[ -f "/usr/local/bin/detectostype" ] && __detectostype_sourced=true . "/usr/local/bin/detectostype"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Send all output to /dev/null
 __devnull() {
@@ -237,12 +237,13 @@ __help() {
   __printf_line 'keys [broken|remove|init|update|reinstall|wtf]                         '
   __printf_line '                                - Manage package signing keys  |pkmgr keys broken'
   __printf_line 'cron add                        - Schedule daily updates       |pkmgr cron add'
-  __printf_line 'alias [install|remove]          - Manage bash aliases          |pkmgr alias install'
+  __printf_line 'aliases [--save]                - List/save bash aliases        |pkmgr aliases --save'
   __printf_line 'required                        - Install required packages    |pkmgr required'
   __printf_line 'init                            - Initialize package manager   |pkmgr init'
   __printf_line 'export                          - Export installed packages    |pkmgr export'
   __printf_line 'import                          - Import packages from file    |pkmgr import [file]'
-  __printf_line 'makepkg [install|remove|search] - Arch makepkg wrapper         |pkmgr makepkg install pkg'
+  __printf_line 'info                            - Show system/pkg mgr info     |pkmgr info'
+  __printf_line 'bin [args]                      - Run pkg manager directly     |pkmgr bin --version'
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
   __printf_opts "Options"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -1000,7 +1001,7 @@ __show_info() {
   fi
   printf_blue "Distro Version:             $display_version"
   printf_yellow "Kernel version              $KERNEL_VERSION"
-  if [ "$truncate" = "truncate" ] || [ $col -le 80 ]; then
+  if [ "$truncate" != "notruncate" ] && { [ "$truncate" = "truncate" ] || [ $col -le 80 ]; }; then
     truncate="true"
     printf_cyan "Repo:                       ${dotfilesrepo_url:0:$col}"
     printf_cyan "Repo Raw:                   ${dotfilesrepo_raw:0:$col}"
@@ -1421,7 +1422,8 @@ __initialize_variables() {
         local rc=0                                                           #
         printf_cyan "Fixing Alpine APK keys"                                 #
         sudo rm -f /etc/apk/keys/*.pub 2>/dev/null                           #
-        apk add --allow-untrusted alpine-keys 2>/dev/null || rc=$((rc + 1)) #
+        sudo rm -rf /var/cache/apk/* 2>/dev/null                             #
+        apk fix --allow-untrusted alpine-keys 2>/dev/null || rc=$((rc + 1)) #
         apk update || rc=$((rc + 1))                                        #
         return $rc                                                           #
       }                                                                      #
@@ -1429,7 +1431,7 @@ __initialize_variables() {
       __keys_remove()       { printf_cyan "Removing APK keys"; sudo rm -f /etc/apk/keys/*.pub; return 0; }                      #
       __keys_init()         { printf_cyan "Initializing APK keys"; apk add --allow-untrusted alpine-keys 2>/dev/null || return 0; } #
       __keys_update()       { printf_cyan "Updating APK"; apk update 2>/dev/null || return 1; }                                 #
-      __keys_reinstall()    { printf_cyan "Reinstalling APK keys"; apk add --reinstall alpine-keys || return 1; }               #
+      __keys_reinstall()    { printf_cyan "Reinstalling APK keys"; apk fix alpine-keys || return 1; }                         #
     # xbps-* voidlinux based setup
     elif [ -f "$(builtin type -P xbps-install 2>/dev/null)" ]; then                            #
       PKMGR_TYPE="xbps"                                                                        #

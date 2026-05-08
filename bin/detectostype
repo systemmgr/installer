@@ -88,10 +88,11 @@ __get_distro_version() {
   fi
   if [ -n "$(ls -A /etc/*-release 2>/dev/null)" ]; then
     os_v="$(grep '^VERSION="' /etc/os-release | sed 's#VERSION="##g;s#"##g' | awk '{print $1}' | grep '^')"
+    if [ -z "$os_v" ]; then
+      os_v="$(grep '^VERSION_ID=' /etc/os-release | sed 's#VERSION_ID=##g;s#"##g' | awk '{print $1}' | grep '^')"
+    fi
   elif [ -f "/etc/redhat-release" ]; then
     os_v="$(awk '{print $4}' /etc/redhat-release | tr '[:upper:]' '[:lower:]' | sed 's#"##g' | grep '^')"
-  elif [ -f "/etc/os-release" ]; then
-    os_v="$(grep -sh "^VERSION_ID=" /etc/*-release | cut -f1 -d'.' | cut -f2 -d'"' | grep -v '' | grep '^')"
   fi
   if [ -z "$os_v" ]; then
     os_v="$([ -f "/etc/debian_version" ] && grep '[0-9]' "/etc/debian_version" | head -n1 | awk -F '.' '{print $1}')"
@@ -118,7 +119,8 @@ SHORTOPTS=""
 LONGOPTS="debug,help,raw,version,options"
 ARRAY="all arch name type"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# execute options
+# execute options (skip when sourced — caller handles its own args)
+if [ "${__detectostype_sourced:-}" != "true" ]; then
 setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "detectostype" -- "$@" 2>/dev/null)
 eval set -- "${setopts}" #2>/dev/null
 while :; do
@@ -177,6 +179,7 @@ while :; do
     ;;
   esac
 done
+fi # end: skip when sourced
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
 case "$(uname -s)" in

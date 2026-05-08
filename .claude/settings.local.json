@@ -144,7 +144,8 @@
       "Bash(/root/Projects/github/casjay-dotfiles/scripts/bin/clean-system --completions long)",
       "Bash(/root/Projects/github/casjay-dotfiles/scripts/bin/ex --version)",
       "Bash(/root/Projects/github/casjay-dotfiles/scripts/bin/ex --help)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(podman --version)"
     ],
     "deny": [
       "Bash(git commit:*)",
