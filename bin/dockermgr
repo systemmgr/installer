@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605090942-git
+##@Version           :  202605091013-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  WTFPL
@@ -18,7 +18,7 @@
 # shellcheck disable=SC1001,SC2003,SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605090942-git"
+VERSION="202605091013-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -593,17 +593,26 @@ __update_repo_info() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __registry_delete_tag() {
-  if [ -f "$AUTH_TOKEN_NAME" ]; then
-    local TOKEN="$(<"$AUTH_TOKEN_NAME")"
-    local log_file="$DOCKERMGR_CACHE_DIR/delete.log"
-    printf '%s' "$(printf_cyan "Attempting to delete temporary tag: $1:$2"): "
-    curl -q -LSsfi -H "Authorization: Bearer $TOKEN" -X DELETE "$DOCKERMGR_REGISTRY_URL/v2/repositories/$1/tags/$2" &>"$log_file" || return 1
-  elif __api_auth_token; then
-    __registry_delete_tag "$1" "$2"
-  else
-    printf '%b'"Can not delete $1:$2 "
+  local org_repo="$1" tag="$2"
+  local log_file="$DOCKERMGR_CACHE_DIR/delete.log"
+  local TOKEN http_code
+  printf '%s' "$(printf_cyan "Attempting to delete temporary tag: $org_repo:$tag"): "
+  # Always get a fresh token — Hub JWTs expire mid-run on long manifest jobs
+  if [ -f "$DOCKERMGR_CONFIG_DIR/.${AUTH_NAME}_hub_username" ] && [ -f "$DOCKERMGR_CONFIG_DIR/.${AUTH_NAME}_hub_password" ]; then
+    local dh_user dh_pass
+    dh_user="$(<"$DOCKERMGR_CONFIG_DIR/.${AUTH_NAME}_hub_username")"
+    dh_pass="$(<"$DOCKERMGR_CONFIG_DIR/.${AUTH_NAME}_hub_password")"
+    TOKEN="$(__api_auth_token "$dh_user" "$dh_pass")"
+    [ -n "$TOKEN" ] && echo "$TOKEN" >"$AUTH_TOKEN_NAME"
+  fi
+  [ -n "$TOKEN" ] || { [ -f "$AUTH_TOKEN_NAME" ] && TOKEN="$(<"$AUTH_TOKEN_NAME")"; }
+  if [ -z "$TOKEN" ]; then
+    printf '%b' "Can not delete $org_repo:$tag - no auth\n"
     return 1
   fi
+  http_code=$(curl -q -LSsf -H "Authorization: Bearer $TOKEN" -X DELETE \
+    -o "$log_file" -w "%{http_code}" "$DOCKERMGR_REGISTRY_URL/v2/repositories/$org_repo/tags/$tag" 2>>"$log_file")
+  [ "$http_code" = "204" ] || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __fetch_tags_dockerhub() {
