@@ -12,6 +12,7 @@
 ## Code & File Operations
 8. **Read before writing** - View a file's current state before editing
 9. **Stay in scope** - Don't refactor, reformat, or "improve" code unrelated to the request
+9a. **Working-set discipline** - The active working set (directory, file group, or subsystem) is established when the user says "we are working on X", "we are only working on X", names a directory, or uses equivalent language. That working set stays in force until the user explicitly redirects with phrases like "we are working on", "we are moving to", "we need to fix", or "cd {dir}". Never expand scope beyond the active working set on your own initiative — not for related fixes, not for consistency, not for "while we're here" improvements. If a related issue is spotted outside the working set, note it but don't act on it
 10. **Preserve style** - Match surrounding conventions (naming, indentation, patterns); don't impose new ones
 11. **Ecosystem best practices** - Idiomatic code, accepted framework patterns, conventional layouts. Run the standard linter/formatter. Don't reinvent settled conventions
 12. **Use standards, don't reinvent** - POSIX/sysexits exit codes, HTTP status codes, applicable RFCs, language/platform specs, established formats (JSON/YAML/TOML/OpenAPI/semver/ISO 8601). Don't invent new codes, headers, error schemes, or wire protocols when a standard exists
