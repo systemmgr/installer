@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202604252124-git
+##@Version           :  202605101353-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202604252124-git"
+VERSION="202605101353-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 # When invoked via sudo, $HOME points at /root by default. Re-anchor it on
@@ -2311,6 +2311,22 @@ __remove_file() {
 __remove_package() {
   local name="$1"
   local exitCode=0
+  local probe="$name"
+
+  # Map package name → primary binary (mirrors __is_package_installed)
+  case "$name" in
+  ripgrep) probe="rg" ;;
+  llama-cpp | llama_cpp) probe="llama-cli" ;;
+  bottom) probe="btm" ;;
+  opentofu) probe="tofu" ;;
+  powershell) probe="pwsh" ;;
+  minio_server) probe="minio" ;;
+  golang) probe="go" ;;
+  helix) probe="hx" ;;
+  nushell) probe="nu" ;;
+  miller) probe="mlr" ;;
+  nodejs) probe="node" ;;
+  esac
 
   # Check if package is installed before showing message
   if ! __is_package_installed "$name"; then
@@ -2318,7 +2334,31 @@ __remove_package() {
     return 1
   fi
 
-  printf_cyan "Removing $name"
+  # Detect version from the binary before removal
+  local version="" _probe_path=""
+  for _probe_path in \
+    "$SETUPMGR_DEFAULT_USER_BIN_DIR/$probe" \
+    "$SETUPMGR_DEFAULT_SYSTEM_BIN_DIR/$probe" \
+    "$(command -v "$probe" 2>/dev/null)"; do
+    [ -x "$_probe_path" ] || continue
+    version="$("$_probe_path" --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)"
+    break
+  done
+
+  # Determine which bin dirs currently hold the binary (for the title)
+  local _from_dirs=()
+  __sudoif && [ -f "$SETUPMGR_DEFAULT_SYSTEM_BIN_DIR/$probe" ] && _from_dirs+=("$SETUPMGR_DEFAULT_SYSTEM_BIN_DIR")
+  [ -f "$SETUPMGR_DEFAULT_USER_BIN_DIR/$probe" ] && _from_dirs+=("$SETUPMGR_DEFAULT_USER_BIN_DIR")
+
+  # Build title: "Removing foo v1.2.3 from /usr/local/bin and ~/.local/bin"
+  local _title="Removing $name"
+  [ -n "$version" ] && _title+=" $version"
+  if [ ${#_from_dirs[@]} -gt 0 ]; then
+    local _joined="${_from_dirs[0]}"
+    [ ${#_from_dirs[@]} -gt 1 ] && _joined+=" and ${_from_dirs[1]}"
+    _title+=" from $_joined"
+  fi
+  printf_cyan "$_title"
 
   case "$name" in
   asdf)
@@ -2511,6 +2551,7 @@ __remove_package() {
     ;;
   esac
 
+  [ $exitCode -ne 0 ] && printf_red "Failed to remove $name"
   __remove_saved_version "$name"
   return $exitCode
 }
