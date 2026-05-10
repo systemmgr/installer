@@ -18,33 +18,38 @@
 # @@sudo/root        :  GEN_SCRIPT_REPLACE_SUDO
 # @@Template         :  shell/fish
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
-set -g APPNAME (basename (status filename))
+set -g APPNAME (path basename (status filename))
 set -g VERSION GEN_SCRIPT_REPLACE_VERSION
+set -g RUN_USER $USER
 set -g SET_UID (id -u)
-set -g SCRIPT_SRC_DIR (dirname (status filename))
-set -g GEN_SCRIPT_REPLACE_ENV_CWD (realpath "$PWD")
-# - - - - - - - - - - - - - - - - - - - - - - - - -'
+set -g SCRIPT_SRC_DIR (path dirname (status filename))
+set -g GEN_SCRIPT_REPLACE_ENV_CWD $PWD
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # "output" "number"
-if [ "$SHOW_RAW" != true ]
-    function __printf_color -d 'print output'
-        test $argv[2] && set -l DEFAULT_COLOR $argv[2]
-        printf "%b" "$(tput setaf $DEFAULT_COLOR 2>/dev/null)" "$argv[1]\n" "$(tput sgr0 2>/dev/null)"
+if set -q NO_COLOR; or test "$SHOW_RAW" = true
+  # Disable colorization
+  function __printf_color -d 'print output'
+    printf '%s\n' $argv[1]
+  end
+else
+  function __printf_color -d 'print output'
+    set -l color $DEFAULT_COLOR
+    test (count $argv) -ge 2; and set color $argv[2]
+    if isatty 1
+      printf '\e[38;5;%sm%s\e[0m\n' $color $argv[1]
+    else
+      printf '%s\n' $argv[1]
     end
-else # Disable colorization
-    function __printf_color -d 'print output'
-        printf "%b" "$argv[1]\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'
-    end
+  end
 end
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check for command
 function __cmd_exists -d "Check if application exists in the path"
-    which $argv[1] >/dev/null 2>&1 || return 1
+  command -q $argv[1]
 end
-function __function_exists -d "Check if command in a function"
-    type -t $argv[1] 2>&1 | grep -q function >/dev/null 2>&1 || return 1
+function __function_exists -d "Check if command is a function"
+  functions -q $argv[1]
 end
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # custom functions

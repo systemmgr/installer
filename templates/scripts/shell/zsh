@@ -20,24 +20,23 @@
 # shellcheck disable=all
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
-APPNAME="$(basename -- "$0" 2>/dev/null)"
+APPNAME="${0:t}"
 VERSION="GEN_SCRIPT_REPLACE_VERSION"
-RUN_USER="$USER"
-SET_UID="$(id -u)"
-SCRIPT_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-GEN_SCRIPT_REPLACE_ENV_CWD="$(realpath "$PWD")"
+RUN_USER="${USER}"
+SET_UID="${UID}"
+SCRIPT_SRC_DIR="${0:A:h}"
+GEN_SCRIPT_REPLACE_ENV_CWD="${PWD}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # script functions
-if [ "$SHOW_RAW" != "true" ]; then
-  __printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
+if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
+  __printf_color() { printf '%s\n' "$1"; }
 else
-  # Disable colorization
-  __printf_color() { { [ -z "$2" ] || DEFAULT_COLOR=$2; } && printf '%b\n' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+  __printf_color() { [[ -t 1 ]] && printf '\e[38;5;%sm%s\e[0m\n' "${2:-$DEFAULT_COLOR}" "$1" || printf '%s\n' "$1"; }
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check for command
-__cmd_exists() { which $1 >/dev/null 2>&1 || return 1; }
-__function_exists() { builtin type $1 >/dev/null 2>&1 || return 1; }
+__cmd_exists() { (( $+commands[$1] )); }
+__function_exists() { (( $+functions[$1] )); }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # custom functions
 

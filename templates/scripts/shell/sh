@@ -20,23 +20,23 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-APPNAME="$(basename -- "$0" 2>/dev/null)"
+APPNAME="${0##*/}"
 VERSION="GEN_SCRIPT_REPLACE_VERSION"
-RUN_USER="$USER"
+RUN_USER="${USER}"
 SET_UID="$(id -u)"
-SCRIPT_SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-GEN_SCRIPT_REPLACE_ENV_CWD="$(realpath "$PWD")"
+SCRIPT_SRC_DIR="$(dirname -- "$0")"
+GEN_SCRIPT_REPLACE_ENV_CWD="${PWD}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
-  __printf_color() { printf '%b' "$1\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+if [ -n "${NO_COLOR+x}" ] || [ "${SHOW_RAW}" = "true" ]; then
+  __printf_color() { printf '%s\n' "$1"; }
 else
-  __printf_color() { { [ -z "$2" ] || DEFAULT_COLOR=$2; } && printf "%b" "$(tput setaf "$DEFAULT_COLOR" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
+  __printf_color() { [ -t 1 ] && printf '\033[38;5;%sm%s\033[0m\n' "${2:-$DEFAULT_COLOR}" "$1" || printf '%s\n' "$1"; }
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check for command
-__cmd_exists() { which $1 >/dev/null 2>&1 || return 1; }
-__function_exists() { builtin type $1 >/dev/null 2>&1 || return 1; }
+__cmd_exists() { command -v "$1" >/dev/null 2>&1; }
+__function_exists() { case "$(type "$1" 2>/dev/null)" in *function*) return 0 ;; *) return 1 ;; esac; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # custom functions
 

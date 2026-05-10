@@ -158,7 +158,8 @@
       "Bash(gh auth *)",
       "Bash(gh gist *)",
       "Read(//root/.local/log/dockermgr/docker_io/casjaysdevdocker/**)",
-      "Read(//root/.cache/dockermgr/**)"
+      "Read(//root/.cache/dockermgr/**)",
+      "Skill(update-config)"
     ],
     "deny": [
       "Bash(git commit:*)",
