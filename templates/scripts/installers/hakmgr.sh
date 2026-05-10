@@ -86,12 +86,12 @@ __printf_space() {
   esac
   local string1="${1:-}"
   local string2="${2:-}"
-  local pad
-  printf -v pad '%60s' ''
+  local spaces=$(( padl - ${#string1} ))
+  [[ $spaces -lt 1 ]] && spaces=1
   if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
-    printf '%s %*.*s %s\n' "$string1" 0 $((padl - ${#string1} - ${#string2})) "$pad" "$string2"
+    printf '%s%*s%s\n' "$string1" "$spaces" "" "$string2"
   else
-    printf '%b%s %*.*s %s%b\n' "$color" "$string1" 0 $((padl - ${#string1} - ${#string2})) "$pad" "$string2" "$PRINTF_SET_RESET"
+    printf '%b%s%*s%s%b\n' "$color" "$string1" "$spaces" "" "$string2" "$PRINTF_SET_RESET"
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

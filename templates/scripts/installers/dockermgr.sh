@@ -174,10 +174,14 @@ __printf_space() {
     *) color="$PRINTF_SET_WHITE" ;;
   esac
   test -n "$1" && test -z "${1//[0-9]/}" && local padlength="$1" && shift 1 || local padlength="40"
+  local string1="${1:-}"
+  local string2="${2:-}"
+  local spaces=$(( padlength - ${#string1} ))
+  [[ $spaces -lt 1 ]] && spaces=1
   if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
-    printf '%s   %s\n' "$1" "$2"
+    printf '%s%*s%s\n' "$string1" "$spaces" "" "$string2"
   else
-    printf '%b%s   %s%b\n' "$color" "$1" "$2" "$PRINTF_SET_RESET"
+    printf '%b%s%*s%s%b\n' "$color" "$string1" "$spaces" "" "$string2" "$PRINTF_SET_RESET"
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
