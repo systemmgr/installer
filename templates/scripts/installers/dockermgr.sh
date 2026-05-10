@@ -208,7 +208,7 @@ __docker_check() { [ -n "$(type -p docker 2>/dev/null)" ] || return 1; }
 __remove_extra_spaces() { sed 's/\( \)*/\1/g;s|^ ||g' | sed 's/^[ \t]*//'; }
 __set_vhost_alias() { echo "$1" | __remove_extra_spaces | grep "$2$" | sed "s|$2$|$3|g"; }
 __docker_ps_all() { docker ps -a 2>&1 | grep -i ${1:-} "$CONTAINER_NAME" && return 0 || return 1; }
-__password() { head -n1000 -c 10000 "/dev/urandom" | tr -dc '0-9a-zA-Z' | head -c${1:-16} && echo ""; }
+__generate_password() { head -n1000 -c 10000 "/dev/urandom" | tr -dc '0-9a-zA-Z' | head -c${1:-16} && echo ""; }
 __total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && printf '%s\n' "$((mem / 1000))"; }
 __docker_is_running() { ps aux 2>/dev/null | grep 'dockerd' | grep -v ' grep ' | grep -q '^' || return 1; }
 __container_name() { echo "$DOCKER_REGISTRY_USER_NAME-$DOCKER_REGISTRY_REPO_NAME-$DOCKER_HUB_IMAGE_TAG" | sed 's|/|-|g' | grep '^' || return 1; }
@@ -256,8 +256,8 @@ __get_service_port() { __sudo netstat -taupln | grep 'LISTEN' | awk '{print $4",
 __docker_check || __docker_init
 __docker_is_running || printf_exit "Docker is not running"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__create_password() { __password "${1:-16}"; }
-__create_api_key() { __password "${1:-32}"; }
+__create_password() { __generate_password "${1:-16}"; }
+__create_api_key() { __generate_password "${1:-32}"; }
 __create_secret_key() { __cmd_exists openssl && openssl rand -hex ${1:-64} || __create_api_key "${1:-64}"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # hash the password
