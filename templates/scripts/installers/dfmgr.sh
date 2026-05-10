@@ -61,28 +61,43 @@ elif connect_test; then
   curl -q -LSsf "$SCRIPTSFUNCTURL/$SCRIPTSFUNCTFILE" -o "/tmp/$SCRIPTSFUNCTFILE" || exit 1
   . "/tmp/$SCRIPTSFUNCTFILE"
 else
-  echo "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" 1>&2
+  printf '%s\n' "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" >&2
   exit 90
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# printf_space spacing color message value
+# printf color variables
+PRINTF_SET_BLACK='\e[1;30m'
+PRINTF_SET_RED='\e[0;31m'
+PRINTF_SET_GREEN='\e[0;32m'
+PRINTF_SET_YELLOW='\e[1;33m'
+PRINTF_SET_BLUE='\e[1;34m'
+PRINTF_SET_PURPLE='\e[0;35m'
+PRINTF_SET_CYAN='\e[0;36m'
+PRINTF_SET_WHITE='\e[1;37m'
+PRINTF_SET_RESET='\e[0m'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf_space [padlength] [PRINTF_SET_COLOR] string1 string2
 __printf_space() {
   test -n "$1" && test -z "${1//[0-9]/}" && local padl="$1" && shift 1 || local padl="40"
-  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="6"
-  local string1="$1"
-  local string2="$2"
-  local pad=$(printf '%0.1s' " "{1..60})
-  local message="$(printf "%b" "$(tput setaf "$color" 2>/dev/null)")"
-  message+="$(printf '%s' "$string1") "
-  message+="$(printf '%*.*s' 0 $((padl - ${#string1} - ${#string2})) "$pad") "
-  message+="$(printf '%s' "$string2") "
-  message+="$(printf '%b\n' "$(tput sgr0 2>/dev/null)")"
-  printf '%s\n' "$message"
+  local color
+  case "${1:-}" in
+    \\*) color="$1" && shift 1 ;;
+    *) color="$PRINTF_SET_CYAN" ;;
+  esac
+  local string1="${1:-}"
+  local string2="${2:-}"
+  local pad
+  printf -v pad '%60s' ''
+  if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
+    printf '%s %*.*s %s\n' "$string1" 0 $((padl - ${#string1} - ${#string2})) "$pad" "$string2"
+  else
+    printf '%b%s %*.*s %s%b\n' "$color" "$string1" 0 $((padl - ${#string1} - ${#string2})) "$pad" "$string2" "$PRINTF_SET_RESET"
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __am_i_online() { connect_test || return 1; }
 __run_git_clone_pull() { git_update "$1" "$2"; }
-__cmd_exists() { builtin type -P $1 &>/dev/null; }
+__cmd_exists() { command -v "$1" &>/dev/null; }
 __mkdir() { mkdir -p "$@" &>/dev/null || return 1; }
 __app_is_running() { pidof "$1" &>/dev/null || return 1; }
 __mv_f() { [ -e "$1" ] && mv -f "$@" &>/dev/null || return 1; }
@@ -96,9 +111,9 @@ __download_file() { curl -q -LSsf "$1" -o "$2" 2>/dev/null || return 1; }
 __input_is_number() { test -n "$1" && test -z "${1//[0-9]/}" || return 1; }
 __failexitcode() { [ $1 -ne 0 ] && printf_red "😠 $2 😠" && exit ${1:-4}; }
 __get_exit_status() { local s=$? && getRunStatus=$((s + ${getRunStatus:-0})) && return $s; }
-__get_version() { echo "$@" | awk -F '.' '{ printf("%d%d%d%d\n", $1,$2,$3,$4) }'; }
+__get_version() { printf '%s\n' "$@" | awk -F '.' '{ printf("%d%d%d%d\n", $1,$2,$3,$4) }'; }
 __silent_start() { __cmd_exists $1 && (eval "$*" &>/dev/null &) && __app_is_running $1 || return 1; }
-__total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && echo $((mem / 1000)); }
+__total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && printf '%s\n' "$((mem / 1000))"; }
 __symlink() { { __rm_rf "$2" || true; } && ln_sf "$1" "$2" &>/dev/null || { [ -L "$2" ] || return 1; }; }
 __get_pid() { ps -aux | grep -v ' grep ' | grep "$1" | awk -F ' ' '{print $2}' | grep ${2:-[0-9]} || return 1; }
 __dir_count() { find -L "${1:-./}" -maxdepth "${2:-1}" -not -path "${1:-./}/.git/*" -type d 2>/dev/null | wc -l; }

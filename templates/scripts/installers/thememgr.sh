@@ -56,7 +56,7 @@ elif connect_test; then
   curl -q -LSsf "$SCRIPTSFUNCTURL/$SCRIPTSFUNCTFILE" -o "/tmp/$SCRIPTSFUNCTFILE" || exit 1
   . "/tmp/$SCRIPTSFUNCTFILE"
 else
-  echo "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" 1>&2
+  printf '%s\n' "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" >&2
   exit 90
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -

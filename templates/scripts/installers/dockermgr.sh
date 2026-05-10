@@ -58,7 +58,7 @@ elif connect_test; then
   curl -q -LSsf "$SCRIPTSFUNCTURL/$SCRIPTSFUNCTFILE" -o "/tmp/$SCRIPTSFUNCTFILE" || exit 1
   . "/tmp/$SCRIPTSFUNCTFILE"
 else
-  echo "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" 1>&2
+  printf '%s\n' "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" >&2
   exit 90
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -155,13 +155,30 @@ __test_public_reachable() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# printf_space spacing color message value
+# printf color variables
+PRINTF_SET_BLACK='\e[1;30m'
+PRINTF_SET_RED='\e[0;31m'
+PRINTF_SET_GREEN='\e[0;32m'
+PRINTF_SET_YELLOW='\e[1;33m'
+PRINTF_SET_BLUE='\e[1;34m'
+PRINTF_SET_PURPLE='\e[0;35m'
+PRINTF_SET_CYAN='\e[0;36m'
+PRINTF_SET_WHITE='\e[1;37m'
+PRINTF_SET_RESET='\e[0m'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf_space [PRINTF_SET_COLOR] [padlength] string1 string2
 __printf_space() {
-  local color padlength
-  test -n "$1" && test -z "${1//[0-9]/}" && color="$1" && shift 1 || color="7"
-  test -n "$1" && test -z "${1//[0-9]/}" && padlength="$1" && shift 1 || padlength="40"
-  printf '%b%s   %s%b' "$(tput setaf "$color" 2>/dev/null)" "$1" "$2" "$(tput sgr0 2>/dev/null)"
-  printf '\n'
+  local color
+  case "${1:-}" in
+    \\*) color="$1" && shift 1 ;;
+    *) color="$PRINTF_SET_WHITE" ;;
+  esac
+  test -n "$1" && test -z "${1//[0-9]/}" && local padlength="$1" && shift 1 || local padlength="40"
+  if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
+    printf '%s   %s\n' "$1" "$2"
+  else
+    printf '%b%s   %s%b\n' "$color" "$1" "$2" "$PRINTF_SET_RESET"
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __printf_spacing_file() {
@@ -173,16 +190,22 @@ __printf_spacing_file() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __printf_spacing_color() { __printf_space "$1" "40" "$2" "$3"; }
-__printf_color() { printf "%b" "$(tput setaf "$1" 2>/dev/null)" "$2" "$(tput sgr0 2>/dev/null)" && printf '\n'; }
+__printf_color() {
+  if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
+    printf '%s\n' "$2"
+  else
+    printf '%b%s%b\n' "${1:-$PRINTF_SET_RESET}" "$2" "$PRINTF_SET_RESET"
+  fi
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__cmd_exists() { type -p $1 &>/dev/null || return 1; }
+__cmd_exists() { command -v "$1" &>/dev/null; }
 __grep_char() { grep '[a-zA-Z0-9].[a-zA-Z0-9]' | grep '^' || return 1; }
 __docker_check() { [ -n "$(type -p docker 2>/dev/null)" ] || return 1; }
 __remove_extra_spaces() { sed 's/\( \)*/\1/g;s|^ ||g' | sed 's/^[ \t]*//'; }
 __set_vhost_alias() { echo "$1" | __remove_extra_spaces | grep "$2$" | sed "s|$2$|$3|g"; }
 __docker_ps_all() { docker ps -a 2>&1 | grep -i ${1:-} "$CONTAINER_NAME" && return 0 || return 1; }
 __password() { head -n1000 -c 10000 "/dev/urandom" | tr -dc '0-9a-zA-Z' | head -c${1:-16} && echo ""; }
-__total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && echo $((mem / 1000)); }
+__total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && printf '%s\n' "$((mem / 1000))"; }
 __docker_is_running() { ps aux 2>/dev/null | grep 'dockerd' | grep -v ' grep ' | grep -q '^' || return 1; }
 __container_name() { echo "$DOCKER_REGISTRY_USER_NAME-$DOCKER_REGISTRY_REPO_NAME-$DOCKER_HUB_IMAGE_TAG" | sed 's|/|-|g' | grep '^' || return 1; }
 __is_server() { echo "${SET_HOST_FULL_NAME:-$HOSTNAME}" | grep -q '^server\..*\..*[a-zA-Z0-9][a-zA-Z0-9]$' || return 1; }

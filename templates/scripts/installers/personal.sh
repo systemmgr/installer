@@ -46,7 +46,7 @@ if [ -f "$PWD/$SCRIPTSFUNCTFILE" ]; then
 elif [ -f "$SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" ]; then
   . "$SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE"
 else
-  echo "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" 1>&2
+  printf '%s\n' "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" >&2
   exit 1
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -55,7 +55,7 @@ user_installdirs
 show_optvars "$@"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Setup functions
-__cmd_exists() { type -p "$1" || return 1; }
+__cmd_exists() { command -v "$1" &>/dev/null; }
 __download_file() { curl -q -LSsf "$1" -o "$2" || return 1; }
 __service_is_active() { systemctl is-enabled $1 | grep -q 'enabled' || return 1; }
 __service_is_running() { systemctl is-active $1 | grep -q 'active' || return 1; }
