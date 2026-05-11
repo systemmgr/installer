@@ -461,6 +461,7 @@ __exec_unbuffered() {
   local cmd="$*"
   local log_file="${PKMGR_LOG_INFO:-}"
   local exit_code=0
+  local is_internal_function=false
 
   # Set environment variables for unbuffered output
   export PYTHONUNBUFFERED=1
@@ -468,13 +469,20 @@ __exec_unbuffered() {
   export SYSTEMD_PAGER=""
   export APT_LISTCHANGES_FRONTEND=none
 
+  if [[ "$cmd" =~ ^__[[:alnum:]_]+([[:space:]]|$) ]]; then
+    is_internal_function=true
+  fi
+
   # Execute command based on available tools
   # Priority: script > stdbuf > direct execution
   # script provides best TTY emulation for package managers
 
   if [ -n "$log_file" ] && [ -d "$(dirname "$log_file")" ]; then
     # With logging
-    if command -v script >/dev/null 2>&1; then
+    if [ "$is_internal_function" = "true" ]; then
+      eval "$cmd" 2>&1 | tee -a "$log_file"
+      exit_code=${PIPESTATUS[0]}
+    elif command -v script >/dev/null 2>&1; then
       script -qefc "bash -c '$cmd'" /dev/null 2>&1 | tee -a "$log_file"
       exit_code=${PIPESTATUS[0]}
     elif command -v stdbuf >/dev/null 2>&1; then
@@ -486,7 +494,10 @@ __exec_unbuffered() {
     fi
   else
     # Without logging - direct execution
-    if command -v script >/dev/null 2>&1; then
+    if [ "$is_internal_function" = "true" ]; then
+      eval "$cmd" 2>&1
+      exit_code=$?
+    elif command -v script >/dev/null 2>&1; then
       script -qefc "bash -c '$cmd'" /dev/null 2>&1
       exit_code=$?
     elif command -v stdbuf >/dev/null 2>&1; then
@@ -1085,12 +1096,12 @@ __initialize_variables() {
       PKMGR_TYPE="apt-get"                                                                                                        #
       pkmgrcheckbin_opts="-q -y --ignore-hold --allow-change-held-packages --allow-unauthenticated -s dist-upgrade"               #
       export DEBIAN_FRONTEND=noninteractive                                                                                       #
-      export APT_OPTS='-o Dpkg::Options::='"'"'--force-confdef'"'"' -o Dpkg::Options::='"'"'--force-confold'"'"''                 #
+      export APT_OPTS="-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"                     #
       dotfilesrepo_url="$PKMGR_GIT_REPO/$PKMGR_GIT_DOTFILES"                                                                      #
       dotfilesrepo_raw="$dotfilesrepo_url/raw/$PKMGR_GIT_BRANCH/apt"                                                              #
       pkmgrcheckbin="$(builtin type -P apt 2>/dev/null)"                                                                          #
       __pkgmgrbin()       { sudo --preserve-env=PATH /usr/bin/apt-get "$@"; }                                                     #
-      __pkgmgrbinins()    { sudo --preserve-env=PATH /usr/bin/apt-get install "$@"; }                                             #
+      __pkgmgrbinins()    { sudo --preserve-env=PATH /usr/bin/apt-get install $APT_OPTS --assume-yes "$@"; }                      #
       __pkgmgrbininssil() { sudo --preserve-env=PATH /usr/bin/apt-get install $APT_OPTS --ignore-missing -yy -q --allow-unauthenticated --assume-yes "$@"; } #
       __pkgmgrbinremsil() { sudo --preserve-env=PATH /usr/bin/apt-get remove -yy -q --assume-yes --purge "$@"; }                  #
       __pkgmgrbinupdsil() { sudo --preserve-env=PATH /usr/bin/apt-get dist-upgrade $APT_OPTS --ignore-missing -yy -q --allow-unauthenticated --assume-yes; } #
@@ -1148,12 +1159,12 @@ __initialize_variables() {
       PKMGR_TYPE="apt"                                                                                                            #
       pkmgrcheckbin_opts="-q -y --ignore-hold --allow-change-held-packages --allow-unauthenticated -s dist-upgrade"               #
       export DEBIAN_FRONTEND=noninteractive                                                                                       #
-      export APT_OPTS="-o Dpkg::Options::='--force-confdef' -o Dpkg::Options::='--force-confold'"                                 #
+      export APT_OPTS="-o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold"                                     #
       dotfilesrepo_url="$PKMGR_GIT_REPO/$PKMGR_GIT_DOTFILES"                                                                      #
       dotfilesrepo_raw="$dotfilesrepo_url/raw/$PKMGR_GIT_BRANCH/apt"                                                              #
       pkmgrcheckbin="$(builtin type -P apt 2>/dev/null)"                                                                          #
       __pkgmgrbin()       { sudo --preserve-env=PATH /usr/bin/apt "$@"; }                                                        #
-      __pkgmgrbinins()    { sudo --preserve-env=PATH /usr/bin/apt install "$@"; }                                                 #
+      __pkgmgrbinins()    { sudo --preserve-env=PATH /usr/bin/apt install $APT_OPTS --assume-yes "$@"; }                         #
       __pkgmgrbininssil() { sudo --preserve-env=PATH /usr/bin/apt install $APT_OPTS --ignore-missing -yy -q --allow-unauthenticated --assume-yes "$@"; } #
       __pkgmgrbinremsil() { sudo --preserve-env=PATH /usr/bin/apt remove -yy -q --assume-yes --purge "$@"; }                      #
       __pkgmgrbinupdsil() { sudo --preserve-env=PATH /usr/bin/apt dist-upgrade $APT_OPTS --ignore-missing -yy -q --allow-unauthenticated --assume-yes; } #
