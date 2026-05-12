@@ -82,7 +82,7 @@ __printf_space() {
   local color
   case "${1:-}" in
     \\*) color="$1" && shift 1 ;;
-    *) color="$PRINTF_SET_CYAN" ;;
+    *) color="$PRINTF_SET_WHITE" ;;
   esac
   local string1="${1:-}"
   local string2="${2:-}"
@@ -95,6 +95,13 @@ __printf_space() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
+  __printf_color() { printf '%s\n' "$1"; }
+else
+  __printf_color() { [[ -t 1 ]] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define custom functions
 __am_i_online() { connect_test || return 1; }
 __run_git_clone_pull() { git_update "$1" "$2"; }
 __cmd_exists() { command -v "$1" &>/dev/null; }
@@ -113,14 +120,14 @@ __failexitcode() { [ $1 -ne 0 ] && printf_red "😠 $2 😠" && exit ${1:-4}; }
 __get_exit_status() { local s=$? && getRunStatus=$((s + ${getRunStatus:-0})) && return $s; }
 __get_version() { printf '%s\n' "$@" | awk -F '.' '{ printf("%d%d%d%d\n", $1,$2,$3,$4) }'; }
 __silent_start() { __cmd_exists $1 && (eval "$*" &>/dev/null &) && __app_is_running $1 || return 1; }
-__total_memory() { mem="$(free | grep -i 'mem: ' | awk -F ' ' '{print $2}')" && printf '%s\n' "$((mem / 1000))"; }
+__total_memory() { mem="$(free | awk '/[Mm]em:/{print $2; exit}')" && printf '%s\n' "$((mem / 1000))"; }
 __symlink() { { __rm_rf "$2" || true; } && ln_sf "$1" "$2" &>/dev/null || { [ -L "$2" ] || return 1; }; }
-__get_pid() { ps -aux | grep -v ' grep ' | grep "$1" | awk -F ' ' '{print $2}' | grep ${2:-[0-9]} || return 1; }
+__get_pid() { ps -aux | grep -v ' grep ' | grep "$1" | awk '{print $2}' | grep ${2:-[0-9]} || return 1; }
 __dir_count() { find -L "${1:-./}" -maxdepth "${2:-1}" -not -path "${1:-./}/.git/*" -type d 2>/dev/null | wc -l; }
 __file_count() { find -L "${1:-./}" -maxdepth "${2:-1}" -not -path "${1:-./}/.git/*" -type f 2>/dev/null | wc -l; }
 __kill_process_id() { __input_is_number $1 && pid=$1 && { [ -z "$pid" ] || kill -15 $pid &>/dev/null; } || return 1; }
 __kill() { __kill_process_id "$1" || __kill_process_name "$1" || { ! __app_is_running "$1" || kill -9 $pid &>/dev/null; } || return 1; }
-__port_in_use() { netstat -tauln 2>&1 | grep ' LISTEN' | awk -F' ' '{print $4}' | awk -F':' '{print $NF}' | sort -u | grep -q "^$1$" || return 2; }
+__port_in_use() { netstat -tauln 2>&1 | grep ' LISTEN' | awk -F' ' '{n=split($4,a,":"); print a[n]}' | sort -u | grep -q "^$1$" || return 2; }
 __replace_all() { [ -n "$3" ] && [ -e "$3" ] && find "$3" -not -path "$3/.git/*" -type f -exec $sed -i "s|$1|$2|g" {} \; >/dev/null 2>&1 || return 1; }
 __kill_process_name() { local pid="$(pidof "$1" 2>/dev/null)" && { [ -z "$pid" ] || { kill -19 $pid &>/dev/null && ! __app_is_running "$1" && return 0; } || kill -9 $pid &>/dev/null; } || return 1; }
 __does_container_exist() { [ -n "$(command -v docker 2>/dev/null)" ] && docker ps -a | awk '{print $NF}' | grep -v '^NAMES$' | grep -q "$1" || return 1; }
@@ -132,8 +139,8 @@ __service_running() { \systemctl is-active $1 2>&1 | grep -qiw 'active' || retur
 __service_exists() { \systemctl list-unit-files 2>&1 | awk '{print $1}' | grep -q "^$1\." && return 0 || return 1; }
 __service_active() { (\systemctl is-enabled "$1" || \systemctl is-active "$1") | grep -qiE 'enabled|active' || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__get_user_name() { grep ':' /etc/passwd | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
-__get_user_group() { grep ':' /etc/group | awk -F ':' '{print $1}' | sort -u | grep "^${1:-root}$" || return 1; }
+__get_user_name() { awk -F ':' '{print $1}' /etc/passwd | sort -u | grep "^${1:-root}$" || return 1; }
+__get_user_group() { awk -F ':' '{print $1}' /etc/group | sort -u | grep "^${1:-root}$" || return 1; }
 __chuser() { local user=$1 && shift && grep -qs "^$user:" /etc/passwd && chown -Rf "$user" "$@" 2>/dev/null; }
 __chgroup() { local group=$1 && shift && grep -qs "$^group:" /etc/group && chgrp -Rf "$group" "$@" 2>/dev/null; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

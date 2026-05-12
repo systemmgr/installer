@@ -40,15 +40,55 @@ CASJAYSDEVDIR="${CASJAYSDEVDIR:-/usr/local/share/CasjaysDev/scripts}"
 SCRIPTSFUNCTDIR="${CASJAYSDEVDIR:-/usr/local/share/CasjaysDev/scripts}/functions"
 SCRIPTSFUNCTFILE="${SCRIPTSAPPFUNCTFILE:-mgr-installers.bash}"
 SCRIPTSFUNCTURL="${SCRIPTSAPPFUNCTURL:-https://github.com/dfmgr/installer/raw/main/functions}"
+connect_test() { curl -q -ILSsf --retry 1 --max-time 2 "https://1.1.1.1" 2>&1 | grep -iq 'server:*.cloudflare' || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -f "$PWD/$SCRIPTSFUNCTFILE" ]; then
   . "$PWD/$SCRIPTSFUNCTFILE"
 elif [ -f "$SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" ]; then
   . "$SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE"
+elif connect_test; then
+  curl -q -LSsf "$SCRIPTSFUNCTURL/$SCRIPTSFUNCTFILE" -o "/tmp/$SCRIPTSFUNCTFILE" || exit 1
+  . "/tmp/$SCRIPTSFUNCTFILE"
 else
   printf '%s\n' "Can not load the functions file: $SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE" >&2
-  exit 1
+  exit 90
 fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf color variables
+PRINTF_SET_BLACK='\e[1;30m'
+PRINTF_SET_RED='\e[0;31m'
+PRINTF_SET_GREEN='\e[0;32m'
+PRINTF_SET_YELLOW='\e[1;33m'
+PRINTF_SET_BLUE='\e[1;34m'
+PRINTF_SET_PURPLE='\e[0;35m'
+PRINTF_SET_CYAN='\e[0;36m'
+PRINTF_SET_WHITE='\e[1;37m'
+PRINTF_SET_RESET='\e[0m'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
+  __printf_color() { printf '%s\n' "$1"; }
+else
+  __printf_color() { [[ -t 1 ]] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf_space [padlength] [PRINTF_SET_COLOR] string1 string2
+__printf_space() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local padl="$1" && shift 1 || local padl="40"
+  local color
+  case "${1:-}" in
+    \\*) color="$1" && shift 1 ;;
+    *) color="$PRINTF_SET_WHITE" ;;
+  esac
+  local string1="${1:-}"
+  local string2="${2:-}"
+  local spaces=$(( padl - ${#string1} ))
+  [[ $spaces -lt 1 ]] && spaces=1
+  if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
+    printf '%s%*s%s\n' "$string1" "$spaces" "" "$string2"
+  else
+    printf '%b%s%*s%s%b\n' "$color" "$string1" "$spaces" "" "$string2" "$PRINTF_SET_RESET"
+  fi
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # user system devenv dfmgr dockermgr fontmgr iconmgr pkmgr systemmgr thememgr wallpapermgr
 user_installdirs
@@ -57,9 +97,9 @@ show_optvars "$@"
 # Setup functions
 __cmd_exists() { command -v "$1" &>/dev/null; }
 __download_file() { curl -q -LSsf "$1" -o "$2" || return 1; }
-__service_is_active() { systemctl is-enabled $1 | grep -q 'enabled' || return 1; }
-__service_is_running() { systemctl is-active $1 | grep -q 'active' || return 1; }
-__get_pid() { ps -aux | grep -v 'grep' | grep "$1" | awk -F ' ' '{print $2}' | grep ${2:-[0-9]} || return 1; }
+__service_is_active() { \systemctl is-enabled $1 | grep -q 'enabled' || return 1; }
+__service_is_running() { \systemctl is-active $1 | grep -q 'active' || return 1; }
+__get_pid() { ps -aux | grep -v 'grep' | grep "$1" | awk '{print $2}' | grep ${2:-[0-9]} || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set path
 __set_vars() {

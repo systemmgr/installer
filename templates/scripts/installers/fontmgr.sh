@@ -60,6 +60,42 @@ else
   exit 90
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf color variables
+PRINTF_SET_BLACK='\e[1;30m'
+PRINTF_SET_RED='\e[0;31m'
+PRINTF_SET_GREEN='\e[0;32m'
+PRINTF_SET_YELLOW='\e[1;33m'
+PRINTF_SET_BLUE='\e[1;34m'
+PRINTF_SET_PURPLE='\e[0;35m'
+PRINTF_SET_CYAN='\e[0;36m'
+PRINTF_SET_WHITE='\e[1;37m'
+PRINTF_SET_RESET='\e[0m'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
+  __printf_color() { printf '%s\n' "$1"; }
+else
+  __printf_color() { [[ -t 1 ]] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# printf_space [padlength] [PRINTF_SET_COLOR] string1 string2
+__printf_space() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local padl="$1" && shift 1 || local padl="40"
+  local color
+  case "${1:-}" in
+    \\*) color="$1" && shift 1 ;;
+    *) color="$PRINTF_SET_WHITE" ;;
+  esac
+  local string1="${1:-}"
+  local string2="${2:-}"
+  local spaces=$(( padl - ${#string1} ))
+  [[ $spaces -lt 1 ]] && spaces=1
+  if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" || ! -t 1 ]]; then
+    printf '%s%*s%s\n' "$string1" "$spaces" "" "$string2"
+  else
+    printf '%b%s%*s%s%b\n' "$color" "$string1" "$spaces" "" "$string2" "$PRINTF_SET_RESET"
+  fi
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define custom functions
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
