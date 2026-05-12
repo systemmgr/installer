@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121315-git
+##@Version           :  202605121400-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121315-git"
+VERSION="202605121400-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -2862,26 +2862,69 @@ __check_ai_result_for_errors() {
   local result="$1"
   local display_name="${2:-AI}"
   if [ -z "$result" ]; then
-    return 1  # Empty result is an error
+    return 1
   fi
-  # Check for rate limit messages in the result
-  if echo "$result" | __grep -qiE 'rate.?limit|quota.?exceeded|too many requests|limit.?reached|try again later|overloaded|capacity|throttl'; then
+  # Rate limit / quota
+  if echo "$result" | __grep -qiE 'rate.?limit|quota.?exceeded|too many requests|limit.?reached|try again later|overloaded|capacity|throttl|rate_limit_error|overloaded_error|resource.?exhausted'; then
     printf_red "❌ $display_name: Rate limit detected in response."
     GITCOMMIT_AI_RATE_LIMITED="true"
     export GITCOMMIT_AI_RATE_LIMITED
     return 1
   fi
-  # Check for error JSON responses
-  if echo "$result" | __grep -qE '^\s*\{.*"error".*\}|"type"\s*:\s*"error"|"status"\s*:\s*"error"'; then
-    printf_yellow "⚠️  $display_name: Error response received."
+  # Authentication errors surfaced in the body
+  if echo "$result" | __grep -qiE 'invalid.?(api.?key|token|credentials)|authentication.?error|invalid_api_key|authentication_error|insufficient_quota|permission.?denied|access.?denied'; then
+    printf_red "❌ $display_name: Authentication or quota error in response."
     return 1
   fi
-  # Check for HTML error pages
-  if echo "$result" | __grep -qiE '^<!DOCTYPE|^<html|<title>.*error.*</title>|<h1>.*error.*</h1>'; then
+  # Provider-specific error type fields (JSON, single or multi-line)
+  if echo "$result" | __grep -qiE '"type"\s*:\s*"error"|"status"\s*:\s*"error"|invalid_request_error|authentication_error|insufficient_quota|model_not_found|overloaded_error|rate_limit_error|server_error|api_error'; then
+    printf_yellow "⚠️  $display_name: API error type detected in response."
+    return 1
+  fi
+  # JSON error object — "error": { or "error": "message"
+  if echo "$result" | __grep -qE '"error"\s*:\s*[\{"]'; then
+    printf_yellow "⚠️  $display_name: JSON error object detected in response."
+    return 1
+  fi
+  # First non-blank line is start of a JSON object/array — almost certainly an error payload
+  local first_nonblank
+  first_nonblank="$(echo "$result" | __grep -v '^[[:space:]]*$' | head -n1 | sed 's/^[[:space:]]*//')"
+  if [[ "$first_nonblank" == "{"* ]] || [[ "$first_nonblank" == "["* ]]; then
+    printf_yellow "⚠️  $display_name: Response is a JSON structure, not a commit message."
+    return 1
+  fi
+  # HTTP error status at start of line (API gateway errors surfaced in stdout)
+  if echo "$result" | __grep -qE '^[45][0-9]{2}[[:space:]]|^HTTP/[0-9.]+ [45][0-9]{2}'; then
+    printf_yellow "⚠️  $display_name: HTTP error status code in response."
+    return 1
+  fi
+  # curl / wget errors piped through to stdout
+  if echo "$result" | __grep -qiE '^curl:[[:space:]]*\([0-9]+\)|^wget:[[:space:]]|^Failed to connect|^Connection refused'; then
+    printf_yellow "⚠️  $display_name: Network error output in response."
+    return 1
+  fi
+  # HTML error page
+  if echo "$result" | __grep -qiE '^<!DOCTYPE|^<html|<title>[^<]*error[^<]*</title>|<h1>[^<]*error[^<]*</h1>'; then
     printf_yellow "⚠️  $display_name: Received HTML error page instead of response."
     return 1
   fi
   return 0
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Unified helper: check stderr + check result content + parse. Returns 0 only
+# when the result passes all checks and is successfully parsed as a commit message.
+# Callers: __ai_try_result "$result" "Display Name" "$error_output_tmpfile"
+__ai_try_result() {
+  local result="$1"
+  local display_name="${2:-AI}"
+  local error_file="${3:-}"
+  local had_stderr_error=false
+  if [ -n "$error_file" ] && [ -s "$error_file" ]; then
+    __check_ai_error "" "$(<"$error_file")" "$display_name" || had_stderr_error=true
+  fi
+  [ -n "$error_file" ] && rm -f "$error_file"
+  $had_stderr_error && return 1
+  __parse_ai_result "$result" "$display_name"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __ai_commit_message() {
@@ -3037,10 +3080,13 @@ $diff_content"
     # If stripping left us with empty, fail
     [ -z "$res" ] && return 1
     short_msg="$(echo "$res" | head -n1)"
-    # Validate the short message; if first line fails, scan all lines for a valid one
+    # Validate the short message; if first line fails, scan remaining lines for a
+    # valid one — but only accept lines that are free of error-indicator words so
+    # we don't accidentally pick an English sentence out of an error response body.
     if ! __validate_commit_message "$short_msg"; then
       while IFS= read -r line; do
-        if __validate_commit_message "$line"; then
+        if __validate_commit_message "$line" && \
+           ! echo "$line" | __grep -qiE '(error|fail|exception|invalid|unable|cannot|quota|limit|unauthorized|denied|refused|timeout|blocked|unavailable|forbidden|bad.?request|not.?found)'; then
           short_msg="$line"
           found_valid="true"
           break
@@ -3098,11 +3144,7 @@ $diff_content"
         if [ -n "$ai_args" ]; then
           error_output="$(mktemp)"
           result="$(ollama $ai_args "$prompt" 2>"$error_output" | __grep -v '^$')"
-          if [ -s "$error_output" ]; then
-            __check_ai_error "ollama" "$(<"$error_output")" "Ollama AI"
-          fi
-          rm -f "$error_output"
-          if __parse_ai_result "$result"; then
+          if __ai_try_result "$result" "Ollama AI" "$error_output"; then
             return 0
           else
             printf_yellow "⚠️  ollama failed to generate message, trying fallbacks..."
@@ -3130,11 +3172,7 @@ $diff_content"
         [ -z "$ai_args" ] && ai_args="exec"
         error_output="$(mktemp)"
         result="$(codex $ai_args "$prompt" 2>"$error_output" | __grep -v '^$')"
-        if [ -s "$error_output" ]; then
-          __check_ai_error "codex" "$(<"$error_output")" "Codex AI"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "Codex AI" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  codex failed to generate message, trying fallbacks..."
@@ -3144,11 +3182,7 @@ $diff_content"
         [ -z "$ai_args" ] && ai_args="-p --allow-all-tools"
         error_output="$(mktemp)"
         result="$(copilot $ai_args "$prompt" 2>"$error_output" | __grep -v '^$')"
-        if [ -s "$error_output" ]; then
-          __check_ai_error "copilot" "$(<"$error_output")" "GitHub Copilot"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "GitHub Copilot" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  copilot failed to generate message, trying fallbacks..."
@@ -3158,11 +3192,7 @@ $diff_content"
         [ -z "$ai_args" ] && ai_args="-p --no-display-prompt"
         error_output="$(mktemp)"
         result="$($ai_cmd $ai_args "$prompt" 2>"$error_output" | __grep -v '^$')"
-        if [ -s "$error_output" ]; then
-          __check_ai_error "$ai_cmd" "$(<"$error_output")" "$(echo $ai_cmd | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2));}1')"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "$(echo $ai_cmd | tr '-' ' ' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) tolower(substr($i,2));}1')" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  $ai_cmd failed to generate message, trying fallbacks..."
@@ -3171,11 +3201,7 @@ $diff_content"
       gpt4all-cli)
         error_output="$(mktemp)"
         result="$(gpt4all-cli ${ai_args:-} "$prompt" 2>"$error_output" | __grep -v '^$')"
-        if [ -s "$error_output" ]; then
-          __check_ai_error "gpt4all-cli" "$(<"$error_output")" "GPT4All"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "GPT4All" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  gpt4all-cli failed to generate message, trying fallbacks..."
@@ -3184,11 +3210,7 @@ $diff_content"
       lms)
         error_output="$(mktemp)"
         result="$(echo "$prompt" | lms ${ai_args:-chat} 2>"$error_output" | __grep -v '^$')"
-        if [ -s "$error_output" ]; then
-          __check_ai_error "lms" "$(<"$error_output")" "LM Studio"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "LM Studio" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  lms failed to generate message, trying fallbacks..."
@@ -3202,11 +3224,7 @@ $diff_content"
         else
           result="$(echo "$prompt" | $ai_cmd 2>"$error_output" | __grep -v '^$')"
         fi
-        if [ -s "$error_output" ]; then
-          __check_ai_error "$ai_cmd" "$(<"$error_output")" "$ai_cmd"
-        fi
-        rm -f "$error_output"
-        if __parse_ai_result "$result"; then
+        if __ai_try_result "$result" "$ai_cmd" "$error_output"; then
           return 0
         else
           printf_yellow "⚠️  $ai_cmd failed to generate message, trying fallbacks..."
@@ -3228,9 +3246,7 @@ $diff_content"
     if [ -n "$ollama_model" ]; then
       error_output="$(mktemp)"
       result="$(ollama run "$ollama_model" "$prompt" 2>"$error_output" | __grep -v '^$')"
-      [ -s "$error_output" ] && __check_ai_error "ollama" "$(<"$error_output")" "Ollama"
-      rm -f "$error_output"
-      __parse_ai_result "$result" "Ollama" && return 0
+      __ai_try_result "$result" "Ollama" "$error_output" && return 0
     fi
   fi
 
@@ -3238,42 +3254,32 @@ $diff_content"
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists llama-cli; then
     error_output="$(mktemp)"
     result="$(llama-cli -p "$prompt" --no-display-prompt 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "llama-cli" "$(<"$error_output")" "Llama.cpp CLI"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "Llama.cpp CLI" && return 0
+    __ai_try_result "$result" "Llama.cpp CLI" "$error_output" && return 0
   elif [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists llama-cpp; then
     error_output="$(mktemp)"
     result="$(llama-cpp -p "$prompt" --no-display-prompt 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "llama-cpp" "$(<"$error_output")" "Llama.cpp"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "Llama.cpp" && return 0
+    __ai_try_result "$result" "Llama.cpp" "$error_output" && return 0
   fi
 
   # Try llamafile
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists llamafile; then
     error_output="$(mktemp)"
     result="$(llamafile -p "$prompt" --no-display-prompt 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "llamafile" "$(<"$error_output")" "Llamafile"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "Llamafile" && return 0
+    __ai_try_result "$result" "Llamafile" "$error_output" && return 0
   fi
 
   # Try gpt4all
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists gpt4all-cli; then
     error_output="$(mktemp)"
     result="$(gpt4all-cli "$prompt" 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "gpt4all-cli" "$(<"$error_output")" "GPT4All"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "GPT4All" && return 0
+    __ai_try_result "$result" "GPT4All" "$error_output" && return 0
   fi
 
   # Try lmstudio CLI
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists lms; then
     error_output="$(mktemp)"
     result="$(echo "$prompt" | lms chat 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "lms" "$(<"$error_output")" "LM Studio"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "LM Studio" && return 0
+    __ai_try_result "$result" "LM Studio" "$error_output" && return 0
   fi
 
   # Try cloud AI clients (skip if rate limited from local attempts)
@@ -3291,27 +3297,21 @@ $diff_content"
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists codex; then
     error_output="$(mktemp)"
     result="$(codex exec "$prompt" 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "codex" "$(<"$error_output")" "Codex AI"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "Codex AI" && return 0
+    __ai_try_result "$result" "Codex AI" "$error_output" && return 0
   fi
 
   # Try GitHub Copilot CLI
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists copilot; then
     error_output="$(mktemp)"
     result="$(copilot -p "$prompt" --allow-all-tools 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "copilot" "$(<"$error_output")" "GitHub Copilot"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "GitHub Copilot" && return 0
+    __ai_try_result "$result" "GitHub Copilot" "$error_output" && return 0
   fi
 
   # Try GitHub Copilot via gh extension
   if [ "$GITCOMMIT_AI_RATE_LIMITED" != "true" ] && __cmd_exists gh && gh extension list 2>/dev/null | __grep -q 'copilot'; then
     error_output="$(mktemp)"
     result="$(echo "$prompt" | gh copilot suggest -t shell 2>"$error_output" | __grep -v '^$')"
-    [ -s "$error_output" ] && __check_ai_error "gh-copilot" "$(<"$error_output")" "GitHub Copilot (via gh)"
-    rm -f "$error_output"
-    __parse_ai_result "$result" "GitHub Copilot (via gh)" && return 0
+    __ai_try_result "$result" "GitHub Copilot (via gh)" "$error_output" && return 0
   fi
 
   # Fallback to auto-generated message
