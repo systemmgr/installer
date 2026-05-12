@@ -107,7 +107,7 @@ and the global rules touch the same topic, the global rules win.
 - **Control flow**: prefer `if/else` over `&&`/`||` chains for readability
 - **Newlines**: always add newline at end of file
 - **Headers**: update `@@Version` (`YYYYMMDDHHMM-git`) and `@@Changelog` on every change
-- **Line length**: if a complete command is ≤ 180 characters, write it on a single line — do NOT split it with `\` continuations. Only split lines that exceed 180 characters, or when splitting genuinely aids readability (e.g. a long pipeline where each stage is a logical step, or a command with many distinct flag groups).
+- **Line length**: if a complete command is ≤ 180 characters, write it on a single line — including pipelines (`cmd | cmd | cmd | cmd`). Only split when the line exceeds 180 characters, or when the command contains an embedded program that inherently spans lines (e.g. a multi-line `awk` or `sed` script).
 
 ---
 
