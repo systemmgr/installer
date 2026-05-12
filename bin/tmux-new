@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121300-git
+##@Version           :  202605121400-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121300-git"
+VERSION="202605121400-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -449,6 +449,94 @@ __exec_uptime() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__exec_keybindings() {
+  cat <<'KEYBINDINGS'
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          TMUX KEYBINDINGS REFERENCE                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PREFIX = Ctrl+Space
+  Nested tmux  :  Ctrl+Space Space   (pass prefix through to inner session)
+  This help    :  Ctrl+Space ?
+
+┌─ SESSION ─────────────────────────────────────────────────────────────────────┐
+│ PREFIX d           Detach from session                                        │
+│ PREFIX $           Rename current session                                     │
+│ PREFIX Tab         Choose session (tree view)                                 │
+│ PREFIX N           Create new session (prompts for name)                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ WINDOW ──────────────────────────────────────────────────────────────────────┐
+│ PREFIX c           New window (retain current directory)                      │
+│ PREFIX n           Next window                                                │
+│ PREFIX p           Previous window                                            │
+│ PREFIX `           Last window                                                │
+│ PREFIX ,           Rename current window                                      │
+│ PREFIX r           Move all windows to another session                        │
+│ PREFIX @           Kill current window (with confirmation)                    │
+│ PREFIX Shift+Tab   Choose window (zoomed tree view)                           │
+│ PREFIX 1-9         Switch to window 1-9                                       │
+│ Shift+Left         Previous window (no prefix)                                │
+│ Shift+Right        Next window (no prefix)                                    │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PANE SPLITTING ──────────────────────────────────────────────────────────────┐
+│ PREFIX \           Split left/right  (vertical divider, retain cwd)           │
+│ PREFIX /           Split top/bottom  (horizontal divider, retain cwd)         │
+│ PREFIX x           Kill current pane                                          │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PANE NAVIGATION ─────────────────────────────────────────────────────────────┐
+│ PREFIX ←↑↓→         Move to pane in direction (arrow keys)                   │
+│ PREFIX Ctrl+h/j/k/l Move to pane in direction (vim keys)                     │
+│ Ctrl+h/j/k/l        Navigate panes without prefix (vim-tmux-navigator)       │
+│ Ctrl+\              Navigate to last pane without prefix                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PANE RESIZING ───────────────────────────────────────────────────────────────┐
+│ PREFIX h/j/k/l     Resize pane left/down/up/right by 5 (repeatable)          │
+│ PREFIX Ctrl+←↑↓→   Resize pane by 1 unit (repeatable)                        │
+│ PREFIX +           Zoom / unzoom current pane                                 │
+│ PREFIX w           Choose layout: tiled/even-h/even-v/main-h/main-v          │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FILE TREE SIDEBAR (tmux-sidebar) ────────────────────────────────────────────┐
+│ PREFIX t           Open file tree sidebar (right side)                        │
+│ PREFIX T           Focus / toggle focus on file tree sidebar                  │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ COPY MODE & CLIPBOARD ───────────────────────────────────────────────────────┐
+│ PREFIX [           Enter copy mode (vi keys)                                  │
+│ PREFIX ]           Paste from tmux buffer                                     │
+│ PREFIX Ctrl+v      Paste from system clipboard (xclip / wl-paste / pbpaste)  │
+│ In copy mode:                                                                 │
+│   v / Space        Begin selection                                            │
+│   y / Enter        Copy selection to tmux buffer                              │
+│   Ctrl+c           Copy selection to system clipboard                        │
+│   Mouse drag       Select and copy to clipboard                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SPECIAL FEATURES ────────────────────────────────────────────────────────────┐
+│ PREFIX m           Toggle mouse on / off                                      │
+│ PREFIX s           Toggle pane synchronization (types in all panes)           │
+│ PREFIX R           Reload tmux configuration                                  │
+│ PREFIX Ctrl+s      Save session state (tmux-resurrect)                        │
+│ PREFIX Ctrl+r      Restore session state (tmux-resurrect)                     │
+│ PREFIX Ctrl+p      Send a command to every pane in every session              │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+┌─ MOUSE SUPPORT ───────────────────────────────────────────────────────────────┐
+│ Scroll             Scroll through pane history                                │
+│ Click              Select pane                                                │
+│ Drag pane border   Resize pane                                                │
+│ Double-click       Select word                                                │
+│ Right-click        Open context menu                                          │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+Use j/k or arrow keys to scroll • q to close
+KEYBINDINGS
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 __init() {
   local name="$1"
   name="${name##*/}"
@@ -697,6 +785,12 @@ __launch_tmux() {
       __tmux_apply_resurrect_dir
       __tmux_new_bg_tasks
       rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
+    fi
+    local help_flag="$TMUX_NEW_CONFIG_DIR/.help_shown"
+    if [ ! -f "$help_flag" ]; then
+      touch "$help_flag" 2>/dev/null || true
+      __tmux set-hook -g 'client-attached[99]' \
+        "display-popup -E -w 90% -h 90% 'tmux-new --exec keybindings | less -R' ; set-hook -gu 'client-attached[99]'"
     fi
     if [ -n "$TMUX_NEW_SOCKET_FILE" ] && [ "$TMUX_NEW_SOCKET_FILE" != "default" ]; then
       exec tmux -L "$TMUX_NEW_SOCKET_FILE" attach -t "$TMUX_NEW_NAME"
@@ -1471,6 +1565,10 @@ while :; do
       ;;
     uptime)
       __exec_uptime
+      exit $?
+      ;;
+    keybindings)
+      __exec_keybindings
       exit $?
       ;;
     *)
