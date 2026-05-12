@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121400-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121400-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1009,11 +1009,12 @@ fi
 # Argument/Option settings
 SETARGS=("$@")
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-SHORTOPTS=""
+SHORTOPTS="e:T:"
 SHORTOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 LONGOPTS="completions:,config,debug,dir:,help,options,raw,version,silent,install:"
 LONGOPTS+=",tmux,screen"
+LONGOPTS+=",command:,title:,geometry:,hold,working-directory:"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ARRAY=""
 ARRAY+=""
@@ -1143,12 +1144,34 @@ while :; do
       exit 1
     fi
     ;;
+  -e | --command)
+    MYTERMINAL_EXEC_CMD="$2"
+    shift 2
+    ;;
+  -T | --title)
+    shift 2
+    ;;
+  --geometry)
+    shift 2
+    ;;
+  --hold)
+    shift 1
+    ;;
+  --working-directory)
+    CWD_IS_SET="TRUE"
+    MYTERMINAL_CWD="$2"
+    [ -d "$MYTERMINAL_CWD" ] || mkdir -p "$MYTERMINAL_CWD" |& __devnull
+    shift 2
+    ;;
   --)
     shift 1
     break
     ;;
   esac
 done
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Inject -e/--command value as first positional arg so __execute_myterminal sees it
+[ -n "$MYTERMINAL_EXEC_CMD" ] && set -- "$MYTERMINAL_EXEC_CMD" "$@"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Get directory from args
 # set -- "$@"
