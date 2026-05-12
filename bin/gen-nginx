@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -740,41 +740,41 @@ server {
     alias                                   /var/www/html/.well-known;
   }
 
-  location = /default-html {
+  location ^~ /default-html/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/html;
+    alias                                   /usr/local/share/httpd/html/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-js {
+  location ^~ /default-js/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/js;
+    alias                                   /usr/local/share/httpd/js/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-css {
+  location ^~ /default-css/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/css;
+    alias                                   /usr/local/share/httpd/css/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-icons {
+  location ^~ /default-icons/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/icons;
+    alias                                   /usr/local/share/httpd/icons/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-health {
+  location ^~ /default-health/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/health;
+    alias                                   /usr/local/share/httpd/health/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-error {
+  location ^~ /default-error/ {
     add_header                              Cache-Control no-cache;
-    alias                                   /usr/local/share/httpd/error;
+    alias                                   /usr/local/share/httpd/error/;
     autoindex                               off;
-    try_files                               \$uri \$uri/ 503.html;
+    try_files                               $uri $uri/ =503;
   }
 
   error_page                                403 /default-error/403.html;
@@ -898,41 +898,41 @@ server {
     alias                                   /var/www/html/default/.well-known;
   }
 
-  location = /default-html {
+  location ^~ /default-html/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/html;
+    alias                                   /usr/local/share/httpd/html/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-js {
+  location ^~ /default-js/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/js;
+    alias                                   /usr/local/share/httpd/js/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-css {
+  location ^~ /default-css/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/css;
+    alias                                   /usr/local/share/httpd/css/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-icons {
+  location ^~ /default-icons/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/icons;
+    alias                                   /usr/local/share/httpd/icons/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-health {
+  location ^~ /default-health/ {
     autoindex                               off;
-    alias                                   /usr/local/share/httpd/health;
+    alias                                   /usr/local/share/httpd/health/;
     try_files                               \$uri \$uri/ =403;
   }
 
-  location = /default-error {
+  location ^~ /default-error/ {
     add_header                              Cache-Control no-cache;
-    alias                                   /usr/local/share/httpd/error;
+    alias                                   /usr/local/share/httpd/error/;
     autoindex                               off;
-    try_files                               \$uri 503.html;
+    try_files                               $uri =503;
   }
 
   error_page                                403 /default-error/403.html;
