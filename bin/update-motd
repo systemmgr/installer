@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -122,7 +122,7 @@ if [ "$SHOW_RAW" = "true" ]; then
   ICON_ERROR="[ error ]"
   ICON_QUESTION="[ ? ]"
   printf_column() { tee | grep '^'; }
-  printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+  printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
 else
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
 fi
@@ -138,7 +138,7 @@ __version() { printf_cyan "$VERSION"; }
 # list options
 __list_options() {
   printf_color "$1: " "$5"
-  echo -ne "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
+  printf '%s' "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
   printf_newline
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -180,7 +180,7 @@ UPDATE_MOTD_NOTIFY_CLIENT_ICON="${UPDATE_MOTD_NOTIFY_CLIENT_ICON:-}"
 UPDATE_MOTD_NOTIFY_CLIENT_URGENCY="${UPDATE_MOTD_NOTIFY_CLIENT_URGENCY:-}"
 
 EOF
-  if builtin type -t __gen_config_local | grep -q 'function'; then __gen_config_local; fi
+  if declare -F __gen_config_local >/dev/null; then __gen_config_local; fi
   if [ -f "$UPDATE_MOTD_CONFIG_DIR/$UPDATE_MOTD_CONFIG_FILE" ]; then
     [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
     . "$UPDATE_MOTD_CONFIG_DIR/$UPDATE_MOTD_CONFIG_FILE"
@@ -289,14 +289,14 @@ __trap_exit() {
   exitCode=${exitCode:-0}
   [ -f "$UPDATE_MOTD_TEMP_FILE" ] && rm -Rf "$UPDATE_MOTD_TEMP_FILE" &>/dev/null
   #unset CASJAYSDEV_TITLE_SET && printf '\033]2│;%s\033\\' "${USER}@${HOSTNAME}:${PWD/#$HOME/~} - ${CASJAYSDEV_TITLE_PREV:-$SHELL}"
-  if builtin type -t __trap_exit_local | grep -q 'function'; then __trap_exit_local; fi
+  if declare -F __trap_exit_local >/dev/null; then __trap_exit_local; fi
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __fix_resolver() {
   grep -qs '^nameserver' "/etc/resolv.conf" && return
-  cat <<EOF | tee -p "/etc/resolv.conf" 2>/dev/null >/dev/null
+  tee "/etc/resolv.conf" &>/dev/null <<EOF
 # DNS Resolver
 search casjay.in
 nameserver 1.1.1.1
@@ -310,7 +310,7 @@ EOF
 __lsb_os() {
   local lsb_bin="$(type -P lsb_release 2>/dev/null || type -P lsb-release 2>/dev/null || echo '')"
   if [ -n "$lsb_bin" ]; then
-    $lsb_bin -a | grep 'Distributor ID' | awk -F ':' '{print $2}' | sed "s/^[ \t]*//"
+    $lsb_bin -a | awk -F':[[:space:]]*' '/Distributor ID/{print $2}'
   elif [ -n "$DISTRO_NAME" ]; then
     echo "$DISTRO_NAME" | sed 's|[0-9]||g;s|\.||g'
   elif [ -n "$DISTRO_ID" ]; then
@@ -321,7 +321,9 @@ __lsb_os() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __update_cockpit_motd() {
-  local cockpit_motd="$(ls -A /etc/motd.d/*cockpit* 2>/dev/null | head -n1 | grep '^' || echo '/etc/motd.d/cockpit')"
+  local cockpit_motd
+  cockpit_motd="$(compgen -G '/etc/motd.d/*cockpit*' 2>/dev/null | head -n1)"
+  cockpit_motd="${cockpit_motd:-/etc/motd.d/cockpit}"
   [ -f "/usr/share/cockpit/motd/update-motd" ] && /usr/share/cockpit/motd/update-motd &>/dev/null
   if [ -f "/run/cockpit/active.motd" ] && [ -d "/etc/motd.d" ]; then
     ln -sf "/run/cockpit/active.motd" "$cockpit_motd" &>/dev/null
@@ -338,18 +340,18 @@ __getlipaddr() {
   CHANGE_IP_VAR_DIR="${CHANGE_IP_VAR_DIR:-/var/lib/system-scripts/checkip}"
   [ -d "$CHANGE_IP_VAR_DIR" ] || sudo mkdir -p "$CHANGE_IP_VAR_DIR"
   if [[ "$OSTYPE" =~ ^darwin ]]; then
-    NETDEV="$(route get default 2>/dev/null | grep interface | awk '{print $2}')"
+    NETDEV="$(route get default 2>/dev/null | awk '/interface:/{print $2}')"
   else
-    NETDEV="$(ip route 2>/dev/null | grep default | sed -e "s/^.*dev.//" -e "s/.proto.*//" | awk '{print $1}' | head -n1 | grep '^' || echo 'eth0')"
+    NETDEV="$(ip route 2>/dev/null | awk '/^default/{print $5; exit}' || echo 'eth0')"
   fi
   IFCONFIG="$(builtin type -P /sbin/ifconfig || builtin type -P ifconfig)"
   if [ -f "$IFCONFIG" ]; then
     # net-tools package
-    CURRENT_IP_4="$(/sbin/ifconfig $NETDEV 2>/dev/null | grep -E "venet|inet" | grep -v "127.0.0." | grep 'inet' | grep -v inet6 | awk '{print $2}' | sed s/addr://g | head -n1 | grep '^')"
-    CURRENT_IP_6="$(/sbin/ifconfig $NETDEV 2>/dev/null | grep -E "venet|inet" | grep 'inet6' | grep -i global | awk '{print $2}' | head -n1 | grep '^')"
+    CURRENT_IP_4="$(/sbin/ifconfig "$NETDEV" 2>/dev/null | awk '/inet[^6]/{ip=$2; gsub(/addr:/,"",ip); if(ip!~/^127\./) {print ip; exit}}')"
+    CURRENT_IP_6="$(/sbin/ifconfig "$NETDEV" 2>/dev/null | awk '/inet6.*[Gg]lobal/{print $2; exit}')"
   else
-    CURRENT_IP_4="$(ip -o -f inet address show $NETDEV | awk -F'/' '{print $1}' | awk '{print $NF}' | head -n 1 | grep '^')"
-    CURRENT_IP_6="$(ip -o -f inet6 address show $NETDEV | awk -F'/' '{print $1}' | awk '{print $NF}' | head -n 1 | grep '^')"
+    CURRENT_IP_4="$(ip -o -f inet address show "$NETDEV" | awk '{split($4,a,"/"); print a[1]; exit}')"
+    CURRENT_IP_6="$(ip -o -f inet6 address show "$NETDEV" | awk '{split($4,a,"/"); print a[1]; exit}')"
   fi
   [ -n "$NETDEV" ] || NETDEV="lo"
   [ -n "$CURRENT_IP_4" ] || CURRENT_IP_4="127.0.0.1"
@@ -358,7 +360,7 @@ __getlipaddr() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __restart_motd_services() {
   local SYSTEMD_MOTD_SERVICES=""
-  SYSTEMD_MOTD_SERVICES="$(systemctl --all | grep 'motd' | awk '{print $1}' | sort -u | grep -v '^$')"
+  SYSTEMD_MOTD_SERVICES="$(systemctl --all | awk '/motd/{print $1}' | sort -u)"
   for service in $SYSTEMD_MOTD_SERVICES; do
     systemctl restart $service |& __devnull
   done
@@ -369,10 +371,11 @@ __remove_duplicate_motd() {
   motd_d_dir="/etc/motd.d"
   messages="$(find -L "$motd_d_dir" -type f 2>/dev/null | wc -l)"
   if [ "$messages" != "0" ] && [ -d "$issue_d_dir" ]; then
-    for file in $(ls "$motd_d_dir" 2>/dev/null); do
-      filename="$(basename -- "$file" 2>/dev/null)"
+    for file in "$motd_d_dir"/*; do
+      [[ -f "$file" ]] || continue
+      filename="${file##*/}"
       motd_file="$motd_d_dir/$filename"
-      issue_file="$(find "$issue_d_dir/" -iname "$file*" 2>/dev/null | head -n1)"
+      issue_file="$(find "$issue_d_dir/" -iname "${filename}*" 2>/dev/null | head -n1)"
       [ -f "$issue_file" ] && __sudo rm -f "$issue_file"
     done
   fi
@@ -398,33 +401,33 @@ __gen_versions() {
   local distro_name="$(__lsb_os || echo 'Unknown')"
   local kernel_version="$(uname --kernel-release 2>/dev/null | grep '^' || echo '1.0.0')"
   printf '\n'
-  printf "Distro name: %s\n" "$distro_name" | grep -v '^$'
+  printf "Distro name: %s\n" "$distro_name"
   if __if_os_id debian; then
-    printf "Debian version: %s\n" "$distro_version" | grep -v '^$'
-    printf 'Kernel version %s\n' "$kernel_version" | grep -v '^$'
-    printf "Config version: %s\n" "$configs_version" | grep -v '^$'
+    printf "Debian version: %s\n" "$distro_version"
+    printf 'Kernel version %s\n' "$kernel_version"
+    printf "Config version: %s\n" "$configs_version"
   elif __if_os_id rhel; then
-    printf "RHEL version: %s\n" "$distro_version" | grep -v '^$'
-    printf 'Kernel version %s\n' "$kernel_version" | grep -v '^$'
-    printf "Config version: %s\n" "$configs_version" | grep -v '^$'
+    printf "RHEL version: %s\n" "$distro_version"
+    printf 'Kernel version %s\n' "$kernel_version"
+    printf "Config version: %s\n" "$configs_version"
   elif __if_os_id arch; then
-    printf "Arch version: %s\n" "$distro_version" | grep -v '^$'
-    printf 'Kernel version %s\n' "$kernel_version" | grep -v '^$'
-    printf "Config version: %s\n" "$configs_version" | grep -v '^$'
+    printf "Arch version: %s\n" "$distro_version"
+    printf 'Kernel version %s\n' "$kernel_version"
+    printf "Config version: %s\n" "$configs_version"
   elif __if_os_id mac; then
-    printf "Mac version: %s\n" "$distro_version" | grep -v '^$'
-    printf 'Kernel version %s\n' "$kernel_version" | grep -v '^$'
-    printf "Config version: %s\n" "$configs_version" | grep -v '^$'
+    printf "Mac version: %s\n" "$distro_version"
+    printf 'Kernel version %s\n' "$kernel_version"
+    printf "Config version: %s\n" "$configs_version"
   else
-    printf "OS Version: %s\n" "$distro_version" | grep -v '^$'
-    printf 'Kernel version %s' "$kernel_version" | grep -v '^$'
-    printf "Config Version: %s\n" "$configs_version" | grep -v '^$'
+    printf "OS Version: %s\n" "$distro_version"
+    printf 'Kernel version %s\n' "$kernel_version"
+    printf "Config Version: %s\n" "$configs_version"
   fi
-  printf 'Scripts version %s' "$scripts_version" | grep -v '^$'
-  printf 'configs were last updated on: %s' "$configs_date" | grep -v '^$'
-  printf 'scripts package was last updated on: %s' "$scripts_date" | grep -v '^$'
-  printf 'Messages were last updated on: %s' "$(date +"%b %d, %Y at %H:%M")" | grep -v '^$'
-  printf "\n\n" | grep '^$'
+  printf 'Scripts version %s\n' "$scripts_version"
+  printf 'configs were last updated on: %s\n' "$configs_date"
+  printf 'scripts package was last updated on: %s\n' "$scripts_date"
+  printf 'Messages were last updated on: %s\n' "$(date +"%b %d, %Y at %H:%M")"
+  printf '\n\n'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __update_legal() {
@@ -445,7 +448,7 @@ __update_legal() {
       sudo -HE find "$UPDATE_MOTD_MESSAGE_DIR" -type f -exec "${sed:-sed}" -i '/.*MY IP6 Address is.*/d'
     fi
     for f in $UPDATE_MOTD_MESSAGE_DIR/legal/*.txt; do
-      cat "$f" 2>/dev/null | "${sed:-sed}" '/^$/d' | grep -v '^$'
+      "${sed:-sed}" '/^$/d' "$f" 2>/dev/null
     done
     printf '\n'
   fi
@@ -455,7 +458,7 @@ __update_issue() {
   messages=$(find -L "$UPDATE_MOTD_MESSAGE_DIR/issue" -type f -name '*.txt' 2>/dev/null | wc -l)
   if [ "$messages" != "0" ]; then
     for f in $UPDATE_MOTD_MESSAGE_DIR/issue/*.txt; do
-      [ "$f" = "" ] && grep '^$' || cat "$f" 2>/dev/null | "${sed:-sed}" '/^$/d' | grep -v '^$'
+      [[ -f "$f" ]] && "${sed:-sed}" '/^$/d' "$f" 2>/dev/null
     done
     printf '\n'
   fi
@@ -463,7 +466,7 @@ __update_issue() {
   messages=$(find -L "/etc/issue.d" -type f 2>/dev/null | wc -l)
   if [ "$messages" != "0" ]; then
     for f in /etc/issue.d/*; do
-      [ "$f" = "" ] && grep '^$' || cat "$f" 2>/dev/null | "${sed:-sed}" '/^$/d' | grep -v '^$'
+      [[ -f "$f" ]] && "${sed:-sed}" '/^$/d' "$f" 2>/dev/null
     done
     printf '\n'
   fi
@@ -474,14 +477,14 @@ __update_motd() {
   messages=$(find -L "$UPDATE_MOTD_MESSAGE_DIR/motd" -type f -name '*.txt' 2>/dev/null | wc -l)
   if [ "$messages" != "0" ]; then
     for f in $UPDATE_MOTD_MESSAGE_DIR/motd/*.txt; do
-      [ "$f" = "" ] && grep '^$' || cat "$f" 2>/dev/null | "${sed:-sed}" '/^$/d' | grep -v '^$'
+      [[ -f "$f" ]] && "${sed:-sed}" '/^$/d' "$f" 2>/dev/null
     done
     printf '\n'
   fi
   messages=$(find -L "/etc/motd.d" -type f 2>/dev/null | wc -l)
   if [ "$messages" != "0" ]; then
     for f in /etc/motd.d/*; do
-      [ "$f" = "" ] && grep '^$' || cat "$f" 2>/dev/null | "${sed:-sed}" '/^$/d' | grep -v '^$'
+      [[ -f "$f" ]] && "${sed:-sed}" '/^$/d' "$f" 2>/dev/null
       printf '\n'
     done
   fi
@@ -490,7 +493,7 @@ __update_motd() {
 __update_banners() {
   local banners="" banner_dir="" banner_count="" ssh_conf_edit=""
   banner_dir="/etc/casjaysdev/banners"
-  ssh_conf_edit="$(grep -R '^PrintMotd' /etc/ssh/ | awk -F ':' '{print $1}' | grep '^' || echo '')"
+  ssh_conf_edit="$(grep -rl '^PrintMotd' /etc/ssh/ 2>/dev/null)"
   banner_files="$(find -L $banner_dir/ -type f 2>/dev/null | grep '')"
   banner_count="$(echo "$banner_files" | wc -l)"
   [ "$banner_count" != "0" ] || banner_files="$(echo "$banner_dir"/{rsync,ssh}.txt)"
@@ -501,7 +504,7 @@ __update_banners() {
     done
   fi
   for banner in $banner_files; do
-    cat "/etc/issue" "/etc/motd" | sudo tee -p "$banner" &>/dev/null
+    cat "/etc/issue" "/etc/motd" | sudo tee "$banner" &>/dev/null
   done
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -737,7 +740,7 @@ while :; do
     ICON_ERROR="[ error ]"
     ICON_QUESTION="[ ? ]"
     printf_column() { tee | grep '^'; }
-    printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+    printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
     ;;
   --debug)
     shift 1
