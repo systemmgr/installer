@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -111,7 +111,7 @@ if [ "$SHOW_RAW" = "true" ]; then
   ICON_ERROR="[ error ]"
   ICON_QUESTION="[ ? ]"
   printf_column() { tee | grep '^'; }
-  printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+  printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
 else
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
 fi
@@ -127,7 +127,7 @@ __version() { printf_cyan "$VERSION"; }
 # list options
 __list_options() {
   printf_color "$1: " "$5"
-  echo -ne "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
+  printf '%s' "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
   printf_newline
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -167,7 +167,7 @@ UPDATE_LECERTS_NOTIFY_CLIENT_ICON="${UPDATE_LECERTS_NOTIFY_CLIENT_ICON:-}"
 UPDATE_LECERTS_NOTIFY_CLIENT_URGENCY="${UPDATE_LECERTS_NOTIFY_CLIENT_URGENCY:-}"
 
 EOF
-  if builtin type -t __gen_config_local | grep -q 'function'; then __gen_config_local; fi
+  if declare -F __gen_config_local >/dev/null; then __gen_config_local; fi
   if [ -f "$UPDATE_LECERTS_CONFIG_DIR/$UPDATE_LECERTS_CONFIG_FILE" ]; then
     [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
     . "$UPDATE_LECERTS_CONFIG_DIR/$UPDATE_LECERTS_CONFIG_FILE"
@@ -278,13 +278,13 @@ __trap_exit() {
   UPDATE_LECERTS_EXIT_STATUS=${UPDATE_LECERTS_EXIT_STATUS:-0}
   [ -f "$UPDATE_LECERTS_TEMP_FILE" ] && rm -Rf "$UPDATE_LECERTS_TEMP_FILE" &>/dev/null
   #unset CASJAYSDEV_TITLE_SET && printf '\033]2│;%s\033\\' "${USER}@${HOSTNAME}:${PWD/#$HOME/~} - ${CASJAYSDEV_TITLE_PREV:-$SHELL}"
-  if builtin type -t __trap_exit_local | grep -q 'function'; then __trap_exit_local; fi
+  if declare -F __trap_exit_local >/dev/null; then __trap_exit_local; fi
   return $UPDATE_LECERTS_EXIT_STATUS
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 domain_name() {
-  hostname -f | awk -F'.' '{$1="";OFS="." ; print $0}' | sed 's/^.//;s| |.|g' | grep '^'
+  hostname -f | awk -F'.' '{for(i=2;i<=NF;i++) printf "%s%s",(i>2?".":""),$i; print ""}'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __error_message() {
@@ -340,8 +340,8 @@ __restart_services() {
   SERVICES="${UPDATE_LECERTS_SERVICES_TO_RESTART:-cockpit docker nginx httpd postfix named dovecot proftpd}"
   for service in $SERVICES; do
     printf_yellow "Restarting $service"
-    if systemctl list-units --full -all 2>&1 | grep -Fq "$service"; then
-      systemctl restart $service
+    if systemctl cat "$service" &>/dev/null; then
+      systemctl restart "$service"
     fi
   done
 }
@@ -368,7 +368,7 @@ __update_files() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __create_cron() {
-  cat <<EOF | tee -p /etc/cron.d/update-lecerts &>/dev/null
+  tee /etc/cron.d/update-lecerts &>/dev/null <<EOF
 # lets encrypt certs
 0 3 * * * root update-lecerts update &>"$UPDATE_LECERTS_BOT_LOG_DIR/cron"
 0 */1 * * * root update-lecerts --raw --cron &>"$UPDATE_LECERTS_BOT_LOG_DIR/cron"
@@ -493,7 +493,7 @@ while :; do
     ICON_ERROR="[ error ]"
     ICON_QUESTION="[ ? ]"
     printf_column() { tee | grep '^'; }
-    printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+    printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
     ;;
   --debug)
     shift 1

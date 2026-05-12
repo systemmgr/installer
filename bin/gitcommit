@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121200-git
+##@Version           :  202605121230-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121200-git"
+VERSION="202605121230-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1322,6 +1322,7 @@ __git_mod() {
   fi
   for file in $changed_files; do
     f="$file"
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || { exitCode=$((exitCode + 1)); continue; }
     changelog_message="$prepend"
     local_set_mess="$prepend $f"
     setmess="$(printf '%b\n' "$action $local_set_mess $icon")"
@@ -1354,10 +1355,9 @@ __git_check_lock() {
   local git_dir="${1:-$GITCOMMIT_ROOT_DIR}"
   local lock_file="$git_dir/.git/index.lock"
   if [ -f "$lock_file" ]; then
-    local lock_age=0
-    if [ -f "$lock_file" ]; then
-      lock_age=$(( $(date +%s) - $(stat -c %Y "$lock_file" 2>/dev/null || echo "0") ))
-    fi
+    local mtime lock_age=0
+    mtime="$(stat -c %Y "$lock_file" 2>/dev/null)"
+    [ -n "$mtime" ] && lock_age=$(( $(date +%s) - mtime ))
     # If lock is older than 5 minutes, it's probably stale
     if [ "$lock_age" -gt 300 ]; then
       printf_yellow "Removing stale git lock file (age: ${lock_age}s)"
@@ -1449,6 +1449,7 @@ __git_add() {
   fi
   for file in $changed_files; do
     f="$file"
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || { exitCode=$((exitCode + 1)); continue; }
     setmess="$(printf '%b\n' "$action $prepend $f $icon")"
     GITCOMMIT_MESSAGE_LONG="$(printf '%b\n' "$prepend $f" | sed "s|$f.*.$f|$f|g")"
     __gitmessage "$setmess"
@@ -1479,6 +1480,7 @@ __git_del() {
   fi
   for file in $changed_files; do
     f="$file"
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || { exitCode=$((exitCode + 1)); continue; }
     setmess="$(printf '%b\n' "$action $prepend $f $icon")"
     GITCOMMIT_MESSAGE_LONG="$(printf '%b\n' "$prepend $f" | sed "s|$f.*.$f|$f|g")"
     __gitmessage "$setmess"
