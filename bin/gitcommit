@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121937-git
+##@Version           :  202605121953-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121937-git"
+VERSION="202605121953-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1142,7 +1142,7 @@ __gitcommit() {
   local mess="${*:-$GITCOMMIT_MESSAGE_SHORT}"
   local succ="Successfully committed the changes to"
   local fail="Failed to commit the changes to"
-  local column_length=$(($(tput cols) - 20))
+  local column_length=$(("${COLUMNS:-80}" - 20))
   local removemess="${mess:10:30}"
   local add_changelog_to_commit=""
   GITCOMMIT_EXITCODE="${GITCOMMIT_EXITCODE:-0}"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122005-git
+##@Version           :  202605121953-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122005-git"
+VERSION="202605121953-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -675,23 +675,28 @@ __execute_myterminal() {
   fi
 
   if [ -n "$SSH_CONNECTION" ] || [ -n "$SSH_TTY" ] || [ -z "$DISPLAY" ]; then
-    if [ "$MYTERMINAL_BIN" = "$MYTERMINAL_MULTIPLEX" ]; then
-      # User explicitly chose a multiplexer — honour it
-      printf_blue "Executing $COMMAND in shell due to no display"
-      $MYTERMINAL_MULTIPLEX $MYTERMINAL_MULTIPLEX_OPTS $COMMAND
-    else
-      # Use alternate screen buffer so the original terminal is restored on exit,
-      # matching the UX of vim/less/man. Clear first so the message is prominent.
-      printf '\033[?1049h\033[2J\033[H'
-      printf_blue "Executing $COMMAND in shell due to no display"
-      if echo "$COMMAND" | grep -shqE "bash|$SHELL"; then
-        eval "$COMMAND"
-      else
-        eval "$COMMAND"
-        eval $SHELL
-      fi
-      printf '\033[?1049l'
-    fi
+    # Check first word of MYTERMINAL_BIN against known multiplexers so that
+    # auto-detected values like "tmux new" also match, not just an exact equal.
+    local _bin_first="${MYTERMINAL_BIN%% *}"
+    case "$_bin_first" in
+      tmux | screen | zellij | byobu | dvtm | abduco | dtach | nohup)
+        printf_blue "Executing $COMMAND in shell due to no display"
+        $MYTERMINAL_BIN $COMMAND
+        ;;
+      *)
+        # Use alternate screen buffer so the original terminal is restored on exit,
+        # matching the UX of vim/less/man. Clear first so the message is prominent.
+        printf '\033[?1049h\033[2J\033[H'
+        printf_blue "Executing $COMMAND in shell due to no display"
+        if [[ "$CMD" == *bash* || "$CMD" == *"${SHELL##*/}"* ]]; then
+          eval "$COMMAND"
+        else
+          eval "$COMMAND"
+          eval "$SHELL"
+        fi
+        printf '\033[?1049l'
+        ;;
+    esac
   else
     # Most X11 terminals (xfce4-terminal, xterm, urxvt, etc.) exec the -e argument
     # directly without a shell, so semicolons, pipes, and && are not interpreted.
