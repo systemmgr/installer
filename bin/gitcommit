@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121420-git
+##@Version           :  202605121430-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121420-git"
+VERSION="202605121430-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -2941,32 +2941,22 @@ __ai_commit_message() {
     diff_content="${diff_content:0:4000}..."
   fi
 
-  # Build prompt for full commit message
-  prompt="Generate a git commit message for these changes with EXACTLY this format:
-
-TITLE LINE (REQUIRED FORMAT):
-{emoji} Short summary here {emoji}
-
-Rules for title:
-- MUST start with an emoji
-- MUST end with the SAME emoji
-- Maximum 72 characters total
-- No period at the end
-- Example: 🔧 Fixed authentication bug 🔧
-
-BODY (after blank line):
-- 2-5 bullet points describing what changed and why
-- Each bullet starts with a dash (-)
-
-Common emojis: 🐛 (fix), ✨ (feature), 📝 (docs), 🚀 (release), ♻️ (refactor), 🔧 (config/update)
-
-Output ONLY the commit message, nothing else. No markdown, no explanations.
+  # Build prompt — data first so the model sees what to summarise before the instruction
+  prompt="<diff>
+$diff_content
+</diff>
 
 Files changed:
 $changed_files
 
-Diff:
-$diff_content"
+Write a git commit message for the diff above.
+
+First line must use conventional commit format:
+  type: short description
+Valid types: fix, feat, docs, refactor, chore, test, build, ci, perf, style, revert, security
+Max 72 characters for the first line. No trailing period.
+Optionally follow with a blank line and 2-5 bullet points (- each) explaining what changed and why.
+Output only the commit message, nothing else."
 
   # Helper function to check if string starts with emoji
   __starts_with_emoji() {
@@ -2985,32 +2975,49 @@ $diff_content"
   # Helper function to fix commit message format
   __fix_commit_format() {
     local msg="$1"
-    local emoji=""
-    local text=""
-    # Remove leading/trailing whitespace
+    local emoji="" text="" _cc_type=""
+    # Trim whitespace and trailing punctuation
     msg="$(echo "$msg" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-    # Remove trailing period or ellipsis if present
     msg="${msg%.}"
     msg="${msg%...}"
     msg="${msg%…}"
-    # Check if already has emoji at start
+    # Already in emoji bookend format — pass through
     if __starts_with_emoji "$msg"; then
-      emoji="$(__extract_first_emoji "$msg")"
-      # Remove emoji from start to get text
-      text="$(echo "$msg" | sed 's/^[^[:alnum:]]*[[:space:]]*//')"
-      # Remove emoji from end if present
-      text="$(echo "$text" | sed 's/[[:space:]]*[^[:alnum:]]*$//')"
-      # Check if ends with same emoji
-      if echo "$msg" | __grep -qE "${emoji}[[:space:]]*$"; then
+      local _e _t
+      _e="$(__extract_first_emoji "$msg")"
+      _t="$(echo "$msg" | sed 's/^[^[:alnum:]]*[[:space:]]*//')"
+      _t="$(echo "$_t" | sed 's/[[:space:]]*[^[:alnum:]]*$//')"
+      if echo "$msg" | __grep -qE "${_e}[[:space:]]*$"; then
         echo "$msg"
       else
-        echo "${emoji} ${text} ${emoji}"
+        echo "${_e} ${_t} ${_e}"
       fi
+      return
+    fi
+    # Strip conventional commit type prefix (type, type(scope), type!, type(scope)!)
+    # and map the type to the corresponding emoji
+    _cc_type="$(echo "$msg" | sed -n 's/^\([a-zA-Z][a-zA-Z0-9_-]*\)\([^:]*\):[[:space:]]*.*/\1/p' | tr '[:upper:]' '[:lower:]')"
+    if [ -n "$_cc_type" ]; then
+      text="$(echo "$msg" | sed 's/^[^:]*:[[:space:]]*//')"
+      case "$_cc_type" in
+        fix|bug|bugfix|patch|correct|repair)          emoji="🐛" ;;
+        feat|feature)                                  emoji="✨" ;;
+        doc|docs|readme|comment)                       emoji="📝" ;;
+        refactor|clean|reorganize|restructure)         emoji="♻️" ;;
+        chore|build|ci|release|version|bump)           emoji="🔧" ;;
+        test|spec)                                     emoji="🧪" ;;
+        perf|performance|optim|optimize)               emoji="🚀" ;;
+        style|format)                                  emoji="🎨" ;;
+        revert)                                        emoji="⬇️" ;;
+        security|sec)                                  emoji="🔒" ;;
+        *)                                             emoji="🗃️" ;;
+      esac
     else
-      # No emoji at start - add default based on content
+      # No conventional prefix — infer emoji from the leading verb/noun
+      text="$msg"
       if echo "$msg" | __grep -qiE "^(fix|bug|patch|correct|repair)"; then
         emoji="🐛"
-      elif echo "$msg" | __grep -qiE "^(add|new|feature|implement|create)"; then
+      elif echo "$msg" | __grep -qiE "^(add|new|feat|feature|implement|create)"; then
         emoji="✨"
       elif echo "$msg" | __grep -qiE "^(update|change|modify|enhance|improve)"; then
         emoji="🔧"
@@ -3023,8 +3030,8 @@ $diff_content"
       else
         emoji="🗃️"
       fi
-      echo "${emoji} ${msg} ${emoji}"
     fi
+    echo "${emoji} ${text} ${emoji}"
   }
 
   # Helper function to validate commit message format
@@ -3042,8 +3049,9 @@ $diff_content"
     echo "$msg" | __grep -qiE "^(Error|API|Response|Code|Message|Status|Result|Data|{|\[)" && return 1
     # Check for common AI preamble/error patterns
     echo "$msg" | __grep -qiE "^(I |Here|Sure|Okay|Let me|I'll|I can|I would|Sorry|I apologize|As an AI|Based on|Looking at|After reviewing|The commit|This commit|For this|Given the)" && return 1
-    # Check for AI meta-language about the message itself
-    echo "$msg" | __grep -qiE "commit message|here's|here is|following|would be|should be|suggest|recommend" && return 1
+    # Check for AI meta-language about the message itself (narrow list — avoid false
+    # positives on words that legitimately appear in conventional commit descriptions)
+    echo "$msg" | __grep -qiE "commit message|here's|here is" && return 1
     # Check for markdown artifacts
     echo "$msg" | __grep -qE "^\`\`\`|^#+\s|^\*\*" && return 1
     # Check it's not just the prompt echoed back
@@ -3093,14 +3101,21 @@ $diff_content"
     # we don't accidentally pick an English sentence out of an error response body.
     if ! __validate_commit_message "$short_msg"; then
       while IFS= read -r line; do
-        if __validate_commit_message "$line" && \
-           ! echo "$line" | __grep -qiE '(error|fail|exception|invalid|unable|cannot|quota|limit|unauthorized|denied|refused|timeout|blocked|unavailable|forbidden|bad.?request|not.?found)' && \
-           ! echo "$line" | __grep -qiE '^git (diff|log|show|status|add|commit|push|pull|fetch|clone|branch|checkout|merge|rebase|stash|tag|remote|reset|revert)\b' && \
-           ! echo "$line" | __grep -qE '^diff --git |^\+\+\+ |^--- |^@@ |^index [0-9a-f]{7}'; then
+        __validate_commit_message "$line" || continue
+        # Conventional commit lines are structured — accept without error-word filtering
+        # since words like "timeout", "fail", "invalid" are valid in commit descriptions
+        if echo "$line" | __grep -qiE '^(fix|feat|docs?|refactor|chore|test|build|ci|perf|style|revert|security)(\([^)]+\))?!?:'; then
           short_msg="$line"
           found_valid="true"
           break
         fi
+        # Non-conventional — guard against error body sentences and prompt echoes
+        echo "$line" | __grep -qiE '(error|fail|exception|invalid|unable|cannot|quota|limit|unauthorized|denied|refused|timeout|blocked|unavailable|forbidden|bad.?request|not.?found)' && continue
+        echo "$line" | __grep -qiE '^git (diff|log|show|status|add|commit|push|pull|fetch|clone|branch|checkout|merge|rebase|stash|tag|remote|reset|revert)\b' && continue
+        echo "$line" | __grep -qE '^diff --git |^\+\+\+ |^--- |^@@ |^index [0-9a-f]{7}' && continue
+        short_msg="$line"
+        found_valid="true"
+        break
       done <<<"$res"
       [ -z "$found_valid" ] && return 1
     fi
