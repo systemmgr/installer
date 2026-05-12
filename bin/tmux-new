@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121000-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -10,7 +10,7 @@
 # @@Created          :  Sunday, Aug 28, 2022 20:25 EDT
 # @@File             :  tmux-new
 # @@Description      :  Launch a new tmux session with config
-# @@Changelog        :  state-file fallback for crash recovery, resurrect-dir unified to sessions/, autosave always runs
+# @@Changelog        :  state-file fallback for crash recovery, resurrect-dir unified to sessions/, autosave always runs, rename autosave→bg_tasks, exec tmux attach, fix retVal/eval/quoting bugs
 # @@TODO             :  Better documentation
 # @@Other            :
 # @@Resource         :
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121000-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -55,7 +55,7 @@ __devnull() {
 # Send errors to /dev/null
 __devnull2() {
   [ -n "$1" ] && local cmd="$1" && shift 1 || return 1
-  eval $cmd "$*" 2>/dev/null && exitCode=0 || exitCode=1
+  eval "$cmd" "$@" 2>/dev/null && exitCode=0 || exitCode=1
   return ${exitCode:-0}
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -'
@@ -538,7 +538,7 @@ __tmux_kill() {
     shift 1
     [ $# -ne 0 ] || printf_cyan "Usage: $APPNAME kill pane [name]"
     for arg in "$@"; do
-      local retVal=0
+      local retval=0
       printf_cyan "Killing pane $arg"
       __tmux kill-pane "$arg" &>/dev/null
       retval=$?
@@ -550,7 +550,7 @@ __tmux_kill() {
     shift
     [ $# -ne 0 ] || printf_cyan "Usage: $APPNAME kill server [name]"
     for arg in "$@"; do
-      local retVal=0
+      local retval=0
       printf_cyan "Killing server $arg"
       __tmux kill-server "$arg" &>/dev/null
       retval=$?
@@ -562,7 +562,7 @@ __tmux_kill() {
     shift
     [ $# -ne 0 ] || printf_cyan "Usage: $APPNAME kill session [name]"
     for arg in "$@"; do
-      local retVal=0
+      local retval=0
       if __tmux has-session -t "=$arg" 2>/dev/null; then
         printf_cyan "Killing session $arg"
         __tmux kill-session -t "$arg" &>/dev/null
@@ -585,7 +585,7 @@ __tmux_kill() {
     shift 1
     [ $# -ne 0 ] || printf_cyan "Usage: $APPNAME kill window [name]"
     for arg in "$@"; do
-      local retVal=0
+      local retval=0
       printf_cyan "Killing window $arg"
       __tmux kill-window -t "$arg" &>/dev/null
       retval=$?
@@ -689,15 +689,21 @@ __launch_tmux() {
     if [ "$server_is_up" = "true" ] && __tmux has-session -t "=$TMUX_NEW_NAME" 2>/dev/null; then
       printf_green "Attaching to existing session $TMUX_NEW_NAME"
       __tmux_apply_resurrect_dir
-      __tmux attach -t "$TMUX_NEW_NAME" &>"$TMUX_NEW_LOG_DIR/$APPNAME.log"
+      __tmux_new_bg_tasks
+      rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
     else
       printf_cyan "Starting new tmux environment for $TMUX_NEW_NAME"
       [ "$server_is_up" = "true" ] || sleep 3
-      __tmux -f "$TMUX_NEW_FILE_CONF/$TMUX_NEW_NAME" new-session -D -A -s "$TMUX_NEW_NAME" "tmux source-file $TMUX_NEW_FILE_WINDOWS/$TMUX_NEW_NAME" &>"$TMUX_NEW_LOG_DIR/$APPNAME.log"
+      __tmux -f "$TMUX_NEW_FILE_CONF/$TMUX_NEW_NAME" new-session -d -s "$TMUX_NEW_NAME" "tmux source-file $TMUX_NEW_FILE_WINDOWS/$TMUX_NEW_NAME" &>"$TMUX_NEW_LOG_DIR/$APPNAME.log"
       __tmux_apply_resurrect_dir
+      __tmux_new_bg_tasks
+      rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
     fi
-    __tmux_autosave_start
-    return $?
+    if [ -n "$TMUX_NEW_SOCKET_FILE" ] && [ "$TMUX_NEW_SOCKET_FILE" != "default" ]; then
+      exec tmux -L "$TMUX_NEW_SOCKET_FILE" attach -t "$TMUX_NEW_NAME"
+    else
+      exec tmux attach -t "$TMUX_NEW_NAME"
+    fi
   else
     printf_exit "You appear to already have tmux running"
   fi
@@ -802,9 +808,9 @@ __tmux_cleanup_snapshots() {
   return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Background loop that calls tmux-resurrect save.sh every N seconds while the tmux server is alive.
+# Background task loop: saves session state every N seconds while the tmux server is alive.
 # Writes a PID lockfile to avoid stacking multiple loops across invocations.
-__tmux_autosave_start() {
+__tmux_new_bg_tasks() {
   local save_script="$TMUX_NEW_PLUGIN_DIR/tmux-resurrect/scripts/save.sh"
   local interval="${TMUX_NEW_SAVE_INTERVAL:-300}"
   local lock_file="$TMUX_NEW_TEMP_DIR/autosave.${TMUX_NEW_SOCKET_FILE:-default}.pid"
@@ -815,8 +821,7 @@ __tmux_autosave_start() {
   (
     echo "$BASHPID" >"$lock_file" 2>/dev/null
     trap 'rm -f "$lock_file"' EXIT
-    while __tmux list-sessions &>/dev/null; do
-      sleep "$interval"
+    while sleep "$interval"; do
       __tmux list-sessions &>/dev/null || break
       __tmux_apply_resurrect_dir
       [ -x "$save_script" ] && "$save_script" >/dev/null 2>&1 || true
@@ -883,7 +888,7 @@ __tmux_boot() {
   fi
   __tmux_restore
   local rc=$?
-  __tmux_autosave_start
+  __tmux_new_bg_tasks
   return $rc
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1050,10 +1055,10 @@ __tmux_status() {
   local sessions="$(__tmux_list)"
   if [ -n "$sessions" ]; then
     printf_blue "📊 Active tmux sessions:"
-    for session in $sessions; do
+    while IFS= read -r session; do
       local info="$(__tmux display-message -p -t "$session" '#{session_name}: #{session_windows} windows, #{session_attached} clients' 2>/dev/null)"
       [ -n "$info" ] && printf_green "  $info" || printf_yellow "  $session: (info unavailable)"
-    done
+    done <<< "$sessions"
   else
     printf_yellow "No active tmux sessions"
     return 1
@@ -1338,7 +1343,7 @@ mkdir -p "$TMUX_NEW_LOG_DIR" "$TMUX_NEW_TEMP_DIR" "$TMUX_NEW_CACHE_DIR" \
   "$RUN_OPTIONS_DIRS_GITHUB_DOCKERMGR" 2>/dev/null
 [ -f "$RUN_OPTIONS_LOGS_BUILDX/init.log" ] || echo "$APPNAME has started: $(date)" >"$RUN_OPTIONS_LOGS_BUILDX/init.log" 2>/dev/null
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-TMUX_NEW_TEMP_FILE="${TMUX_NEW_TEMP_FILE:-$(mktemp $TMUX_NEW_TEMP_DIR/XXXXXX 2>/dev/null)}"
+TMUX_NEW_TEMP_FILE="${TMUX_NEW_TEMP_FILE:-$(mktemp "$TMUX_NEW_TEMP_DIR/XXXXXX" 2>/dev/null)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Setup trap to remove temp file
 trap '__trap_exit' EXIT
@@ -1588,7 +1593,7 @@ clean)
   shift 1
   getFiles="$(ls -A "$HOME/.config/myscripts/tmux-new"/*/* 2>/dev/null)"
   if [ -n "$getFiles" ]; then
-    for file in $getFiles; do printf_blue "Deleting $file" && rm -R "$file"; done
+    while IFS= read -r file; do printf_blue "Deleting $file" && rm -R "$file"; done <<< "$getFiles"
   else
     printf_yellow "There are no config files in $HOME/.config/myscripts/tmux-new/*/*"
   fi
