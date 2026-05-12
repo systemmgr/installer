@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -122,7 +122,7 @@ if [ "$SHOW_RAW" = "true" ]; then
   ICON_ERROR="[ error ]"
   ICON_QUESTION="[ ? ]"
   printf_column() { tee | grep '^'; }
-  printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+  printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
 else
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
 fi
@@ -138,7 +138,7 @@ __version() { printf_cyan "$VERSION"; }
 # list options
 __list_options() {
   printf_color "$1: " "$5"
-  echo -ne "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
+  printf '%s' "$2" | sed 's|:||g;s/'$3'/ '$4'/g' | tr '\n' ' '
   printf_newline
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -175,7 +175,7 @@ UPDATE_IP_NOTIFY_CLIENT_ICON="${UPDATE_IP_NOTIFY_CLIENT_ICON:-}"
 UPDATE_IP_NOTIFY_CLIENT_URGENCY="${UPDATE_IP_NOTIFY_CLIENT_URGENCY:-}"
 
 EOF
-  if builtin type -t __gen_config_local | grep -q 'function'; then __gen_config_local; fi
+  if declare -F __gen_config_local >/dev/null; then __gen_config_local; fi
   if [ -f "$UPDATE_IP_CONFIG_DIR/$UPDATE_IP_CONFIG_FILE" ]; then
     [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
     . "$UPDATE_IP_CONFIG_DIR/$UPDATE_IP_CONFIG_FILE"
@@ -282,7 +282,7 @@ __trap_exit() {
   exitCode=${exitCode:-0}
   [ -f "$UPDATE_IP_TEMP_FILE" ] && rm -Rf "$UPDATE_IP_TEMP_FILE" &>/dev/null
   #unset CASJAYSDEV_TITLE_SET && printf '\033]2│;%s\033\\' "${USER}@${HOSTNAME}:${PWD/#$HOME/~} - ${CASJAYSDEV_TITLE_PREV:-$SHELL}"
-  if builtin type -t __trap_exit_local | grep -q 'function'; then __trap_exit_local; fi
+  if declare -F __trap_exit_local >/dev/null; then __trap_exit_local; fi
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -292,18 +292,18 @@ __getlipaddr() {
   CHANGE_IP_VAR_DIR="${CHANGE_IP_VAR_DIR:-/var/lib/system-scripts/checkip}"
   [ -d "$CHANGE_IP_VAR_DIR" ] || __sudo mkdir -p "$CHANGE_IP_VAR_DIR"
   if [[ "$OSTYPE" =~ ^darwin ]]; then
-    NETDEV="$(route get default 2>/dev/null | grep interface | awk '{print $2}')"
+    NETDEV="$(route get default 2>/dev/null | awk '/interface:/{print $2}')"
   else
-    NETDEV="$(ip route 2>/dev/null | grep default | sed -e "s/^.*dev.//" -e "s/.proto.*//" | awk '{print $1}' | head -n1 | grep '^' || echo 'eth0')"
+    NETDEV="$(ip route 2>/dev/null | awk '/^default/{print $5; exit}' || echo 'eth0')"
   fi
   # net-tools package
   IFCONFIG="$(builtin type -P /sbin/ifconfig || builtin type -P ifconfig)"
   if [ -x "$IFCONFIG" ]; then
-    CURRENT_IP_4="$(/sbin/ifconfig $NETDEV 2>/dev/null | grep -E "venet|inet" | grep -v "127.0.0." | grep 'inet' | grep -v inet6 | awk '{print $2}' | sed s/addr://g | head -n1 | grep '^')"
-    CURRENT_IP_6="$(/sbin/ifconfig $NETDEV 2>/dev/null | grep -E "venet|inet" | grep 'inet6' | grep -i global | awk '{print $2}' | head -n1 | grep '^')"
+    CURRENT_IP_4="$(/sbin/ifconfig "$NETDEV" 2>/dev/null | awk '/inet[^6]/{ip=$2; gsub(/addr:/,"",ip); if(ip!~/^127\./) {print ip; exit}}')"
+    CURRENT_IP_6="$(/sbin/ifconfig "$NETDEV" 2>/dev/null | awk '/inet6.*[Gg]lobal/{print $2; exit}')"
   else
-    CURRENT_IP_4="$(ip -o -f inet address show $NETDEV | awk -F'/' '{print $1}' | awk '{print $NF}' | head -n 1 | grep '^')"
-    CURRENT_IP_6="$(ip -o -f inet6 address show $NETDEV | awk -F'/' '{print $1}' | awk '{print $NF}' | head -n 1 | grep '^')"
+    CURRENT_IP_4="$(ip -o -f inet address show "$NETDEV" | awk '{split($4,a,"/"); print a[1]; exit}')"
+    CURRENT_IP_6="$(ip -o -f inet6 address show "$NETDEV" | awk '{split($4,a,"/"); print a[1]; exit}')"
   fi
   [ -n "$NETDEV" ] || NETDEV="lo"
   [ -n "$CURRENT_IP_4" ] || CURRENT_IP_4="127.0.0.1"
@@ -384,7 +384,7 @@ __execute_changeip() {
 __run_cron() {
   local appName="${APPNAME//-/_}"
   local cacheFile="$UPDATE_IP_CACHE_DIR/last_ip.txt"
-  local last_ip="$([ -f "$cacheFile" ] && cat "$cacheFile")"
+  local last_ip; [[ -f "$cacheFile" ]] && last_ip="$(<"$cacheFile")"
   local current_ip="$(curl -q -LSsf -4 "https://ifcfg.us" || false)"
   [ -f "/etc/cron.d/cron_${appName}" ] || echo '*/5 * * * * root eval '$0' cron >/dev/null 2>&1' >"/etc/cron.d/cron_${appName}"
   [ -n "$current_ip" ] || return 1
@@ -508,7 +508,7 @@ while :; do
     ICON_ERROR="[ error ]"
     ICON_QUESTION="[ ? ]"
     printf_column() { tee | grep '^'; }
-    printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
+    printf_color() { printf '%b' "$1" | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g;s/\t//g'; }
     ;;
   --debug)
     shift 1
