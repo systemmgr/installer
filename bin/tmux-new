@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121200-git
+##@Version           :  202605121300-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121200-git"
+VERSION="202605121300-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -365,7 +365,7 @@ __trap_exit() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
-# Wrapper that forwards to tmux, prepending -L when a non-default socket was requested
+# Wrapper that forwards to tmux using the tmux-new socket (always set; "default" is the escape hatch for plain tmux)
 __tmux() {
   if [ -n "$TMUX_NEW_SOCKET_FILE" ] && [ "$TMUX_NEW_SOCKET_FILE" != "default" ]; then
     command tmux -L "$TMUX_NEW_SOCKET_FILE" "$@"
@@ -390,12 +390,11 @@ __cache_valid() {
   return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Resolve the socket name we should use for socket-scoped cache files.
+# Resolve the socket name for socket-scoped cache files.
 # Priority: explicit --socket flag, then $TMUX env (status-bar invocations
-# inherit it), then "default". Without this the caches were per-PID and
-# never reused across invocations.
+# inherit it), then the script default (tmux-new).
 __current_socket() {
-  if [ -n "$TMUX_NEW_SOCKET_FILE" ] && [ "$TMUX_NEW_SOCKET_FILE" != "default" ]; then
+  if [ -n "$TMUX_NEW_SOCKET_FILE" ]; then
     printf '%s' "$TMUX_NEW_SOCKET_FILE"
     return 0
   fi
@@ -407,7 +406,7 @@ __current_socket() {
       return 0
     fi
   fi
-  printf '%s' "default"
+  printf '%s' "tmux-new"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Weather function with caching
@@ -1325,7 +1324,7 @@ RUN_OPTIONS_DIRS_GITHUB_DOCKERMGR="${RUN_OPTIONS_DIRS_GITHUB_DOCKERMGR:-$HOME/Pr
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Programs logging Directories
 RUN_OPTIONS_LOGS_BUILDX="${RUN_OPTIONS_LOGS_BUILDX:-$HOME/.local/log/buildx}"
-TMUX_NEW_SOCKET_FILE="${TMUX_NEW_SOCKET_FILE:-default}"
+TMUX_NEW_SOCKET_FILE="${TMUX_NEW_SOCKET_FILE:-tmux-new}"
 TMUX_NEW_SAVE_INTERVAL="${TMUX_NEW_SAVE_INTERVAL:-300}"
 TMUX_NEW_SNAPSHOT_KEEP="${TMUX_NEW_SNAPSHOT_KEEP:-30}"
 TMUX_NEW_RESURRECT_DIR="${TMUX_NEW_RESURRECT_DIR:-$TMUX_NEW_CONFIG_DIR/sessions}"
