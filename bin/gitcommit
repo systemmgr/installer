@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121440-git
+##@Version           :  202605121937-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121440-git"
+VERSION="202605121937-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -2948,7 +2948,8 @@ Write a git commit message for the diff above.
 First line must use conventional commit format:
   type: short description
 Valid types: fix, feat, docs, refactor, chore, test, build, ci, perf, style, revert, security
-Max 54 characters for the first line. No trailing period.
+The description after "type: " must be at most 54 characters. No trailing period.
+(Emoji bookends will be added around your description automatically — do not include them.)
 Optionally follow with a blank line and 2-5 bullet points (- each) explaining what changed and why.
 Output only the commit message, nothing else."
 
@@ -3128,8 +3129,8 @@ Output only the commit message, nothing else."
     if echo "$_inner_text" | __grep -qE '^\S+\.[a-zA-Z0-9]{1,6}$'; then
       return 1
     fi
-    # Enforce 54-char limit on the formatted subject line — reject, never truncate
-    [ ${#short_msg} -gt 54 ] && return 1
+    # Enforce 54-char limit on the description text (excludes emoji bookends and spaces)
+    [ ${#_inner_text} -gt 54 ] && return 1
     long_msg="$(echo "$res" | tail -n +2 | __grep -v '^$')"
     [ -n "$long_msg" ] && GITCOMMIT_MESSAGE_LONG="$long_msg"
     [ -n "$ai_output_file" ] && echo "$short_msg" >"$ai_output_file" || echo "$short_msg"
