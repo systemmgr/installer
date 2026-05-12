@@ -107,6 +107,7 @@ and the global rules touch the same topic, the global rules win.
 - **Control flow**: prefer `if/else` over `&&`/`||` chains for readability
 - **Newlines**: always add newline at end of file
 - **Headers**: update `@@Version` (`YYYYMMDDHHMM-git`) and `@@Changelog` on every change
+- **Line length**: if a complete command is ≤ 180 characters, write it on a single line — do NOT split it with `\` continuations. Only split lines that would exceed 180 characters.
 
 ---
 
