@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121430-git
+##@Version           :  202605121440-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121430-git"
+VERSION="202605121440-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1064,14 +1064,8 @@ __gitmessage() {
   GITCOMMIT_MESSAGE_LONG="${2:-$GITCOMMIT_MESSAGE_LONG}"
   test_long_message="$(echo "$GITCOMMIT_MESSAGE_LONG" | __grep -v '^$' | head -n1 | __grep '^' || false)"
   test_short_message="$(echo "$GITCOMMIT_MESSAGE_SHORT" | __grep -v '^$' | head -n1 | __grep '^' || false)"
-  if [ ${#GITCOMMIT_MESSAGE_SHORT} -ge 75 ]; then
-    nomessage="true"
-    GITCOMMIT_MESSAGE_SHORT="...${GITCOMMIT_MESSAGE_SHORT:0:69}..."
-    printf '%s  \n' "${GITCOMMIT_MESSAGE_SHORT}" | sed 's|[ ] *| |g;s|^ ||g' >"$GITCOMMIT_MESSAGE_FILE"
-  else
-    nomessage="true"
-    printf '%s  \n' "$GITCOMMIT_MESSAGE_SHORT" | sed 's|[ ] *| |g;s|^ ||g' >"$GITCOMMIT_MESSAGE_FILE"
-  fi
+  nomessage="true"
+  printf '%s  \n' "$GITCOMMIT_MESSAGE_SHORT" | sed 's|[ ] *| |g;s|^ ||g' >"$GITCOMMIT_MESSAGE_FILE"
   if [ -n "$test_long_message" ]; then
     GITCOMMIT_MESSAGE_LONG="$(printf '%b\n' "$GITCOMMIT_MESSAGE_LONG")"
     printf '%s  \n\n\n%s  \n' "$GITCOMMIT_MESSAGE_SHORT" "$GITCOMMIT_MESSAGE_LONG" | sed 's|[ ] *| |g;s|^ ||g' >"$GITCOMMIT_MESSAGE_FILE"
@@ -2954,7 +2948,7 @@ Write a git commit message for the diff above.
 First line must use conventional commit format:
   type: short description
 Valid types: fix, feat, docs, refactor, chore, test, build, ci, perf, style, revert, security
-Max 72 characters for the first line. No trailing period.
+Max 54 characters for the first line. No trailing period.
 Optionally follow with a blank line and 2-5 bullet points (- each) explaining what changed and why.
 Output only the commit message, nothing else."
 
@@ -3041,8 +3035,8 @@ Output only the commit message, nothing else."
     [ -z "$msg" ] && return 1
     # Check minimum length (at least 5 chars)
     [ ${#msg} -lt 5 ] && return 1
-    # Check maximum length for first line (72 chars recommended)
-    [ ${#msg} -gt 150 ] && return 1
+    # Sanity cap on raw input length (strict 54-char limit enforced post-format)
+    [ ${#msg} -gt 100 ] && return 1
     # Reject trailing ellipsis or truncation indicators
     echo "$msg" | __grep -qE '\.\.\.$|…$' && return 1
     # check for API-like responses
@@ -3134,19 +3128,8 @@ Output only the commit message, nothing else."
     if echo "$_inner_text" | __grep -qE '^\S+\.[a-zA-Z0-9]{1,6}$'; then
       return 1
     fi
-    # Validate length after fix (max 72 chars)
-    if [ ${#short_msg} -gt 72 ]; then
-      # Truncate text portion, keeping emoji format
-      local emoji="$(__extract_first_emoji "$short_msg")"
-      local text="$(echo "$short_msg" | sed 's/^[^[:alnum:]]*[[:space:]]*//;s/[[:space:]]*[^[:alnum:]]*$//')"
-      local max_text_len=$((72 - ${#emoji} - ${#emoji} - 4))  # 4 for spaces
-      text="${text:0:$max_text_len}"
-      # Remove any trailing ellipsis from truncation
-      text="${text%...}"
-      text="${text%…}"
-      text="$(echo "$text" | sed 's/[[:space:]]*$//')"
-      short_msg="${emoji} ${text} ${emoji}"
-    fi
+    # Enforce 54-char limit on the formatted subject line — reject, never truncate
+    [ ${#short_msg} -gt 54 ] && return 1
     long_msg="$(echo "$res" | tail -n +2 | __grep -v '^$')"
     [ -n "$long_msg" ] && GITCOMMIT_MESSAGE_LONG="$long_msg"
     [ -n "$ai_output_file" ] && echo "$short_msg" >"$ai_output_file" || echo "$short_msg"
