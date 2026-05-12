@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121300-git
+##@Version           :  202605121315-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121300-git"
+VERSION="202605121315-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1323,6 +1323,22 @@ __git_mod() {
     export GITADMIN_NO_ERROR_MESSAGE="true"
     return 1
   fi
+  if [ -n "$GITCOMMIT_MESSAGE_FROM_FILE" ]; then
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || return 1
+    for file in $changed_files; do
+      __git_repo "$GITCOMMIT_ROOT_DIR" add "$file" &>/dev/null
+    done
+    message_set="TRUE"
+    if __gitcommit "$GITCOMMIT_MESSAGE_SHORT"; then
+      __changelog_create "$(printf '%s\n' $changed_files)"
+    else
+      exitCode=$((exitCode + 1))
+    fi
+    export GITCOMMIT_MESSAGE_FROM_FILE=""
+    [ $exitCode -eq 0 ] && export PUSH_ENABLE="${PUSH_ENABLE:-true}" || export PUSH_ENABLE=""
+    unset changed_files prepend
+    return ${exitCode:-0}
+  fi
   for file in $changed_files; do
     f="$file"
     __git_check_lock "$GITCOMMIT_ROOT_DIR" || { exitCode=$((exitCode + 1)); continue; }
@@ -1451,6 +1467,22 @@ __git_add() {
     export GITADMIN_NO_ERROR_MESSAGE="true"
     return 1
   fi
+  if [ -n "$GITCOMMIT_MESSAGE_FROM_FILE" ]; then
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || return 1
+    for file in $changed_files; do
+      __git_repo "$GITCOMMIT_ROOT_DIR" add "$file" &>/dev/null
+    done
+    message_set="TRUE"
+    if __gitcommit "$GITCOMMIT_MESSAGE_SHORT"; then
+      __changelog_create "$(printf '%s\n' $changed_files)"
+    else
+      exitCode=$((exitCode + 1))
+    fi
+    export GITCOMMIT_MESSAGE_FROM_FILE=""
+    [ $exitCode -eq 0 ] && export PUSH_ENABLE="${PUSH_ENABLE:-true}" || export PUSH_ENABLE=""
+    unset changed_files prepend
+    return ${exitCode:-0}
+  fi
   for file in $changed_files; do
     f="$file"
     __git_check_lock "$GITCOMMIT_ROOT_DIR" || { exitCode=$((exitCode + 1)); continue; }
@@ -1482,6 +1514,22 @@ __git_del() {
     [ "$GITADMIN_NO_ERROR_MESSAGE" = "true" ] || printf_return "🙁 No files have been deleted in $GITCOMMIT_ROOT_DIR 🙁"
     export GITADMIN_NO_ERROR_MESSAGE="true"
     return 1
+  fi
+  if [ -n "$GITCOMMIT_MESSAGE_FROM_FILE" ]; then
+    __git_check_lock "$GITCOMMIT_ROOT_DIR" || return 1
+    for file in $changed_files; do
+      __git_repo "$GITCOMMIT_ROOT_DIR" rm "$file" &>/dev/null
+    done
+    message_set="TRUE"
+    if __gitcommit "$GITCOMMIT_MESSAGE_SHORT"; then
+      __changelog_create "$(printf '%s\n' $changed_files)"
+    else
+      exitCode=$((exitCode + 1))
+    fi
+    export GITCOMMIT_MESSAGE_FROM_FILE=""
+    [ $exitCode -eq 0 ] && export PUSH_ENABLE="${PUSH_ENABLE:-true}" || export PUSH_ENABLE=""
+    unset changed_files prepend
+    return ${exitCode:-0}
   fi
   for file in $changed_files; do
     f="$file"
