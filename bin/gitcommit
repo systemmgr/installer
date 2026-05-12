@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121400-git
+##@Version           :  202605121420-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121400-git"
+VERSION="202605121420-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -3050,6 +3050,14 @@ $diff_content"
     echo "$msg" | __grep -qiE "^Generate a git commit|^First line:|^- First line:|^TITLE LINE|^Rules for|^Output ONLY" && return 1
     # Reject if it ends with a colon (incomplete response)
     echo "$msg" | __grep -qE ':$' && return 1
+    # Reject git subcommands echoed back from the prompt context
+    echo "$msg" | __grep -qiE '^git (diff|log|show|status|add|commit|push|pull|fetch|clone|branch|checkout|merge|rebase|stash|tag|remote|reset|revert)\b' && return 1
+    # Reject diff output fragments that leaked through
+    echo "$msg" | __grep -qE '^diff --git |^\+\+\+ |^--- |^@@ |^index [0-9a-f]{7}' && return 1
+    # Reject bare filenames/paths with no spaces (not a sentence)
+    echo "$msg" | __grep -qE '^\S+\.[a-zA-Z0-9]{1,6}$' && return 1
+    # Reject common shell command invocations echoed from prompt
+    echo "$msg" | __grep -qiE '^(cat|ls|cd|rm|mv|cp|mkdir|chmod|chown|find|grep|sed|awk|curl|wget|echo|printf|export|source)\s' && return 1
     return 0
   }
 
@@ -3086,7 +3094,9 @@ $diff_content"
     if ! __validate_commit_message "$short_msg"; then
       while IFS= read -r line; do
         if __validate_commit_message "$line" && \
-           ! echo "$line" | __grep -qiE '(error|fail|exception|invalid|unable|cannot|quota|limit|unauthorized|denied|refused|timeout|blocked|unavailable|forbidden|bad.?request|not.?found)'; then
+           ! echo "$line" | __grep -qiE '(error|fail|exception|invalid|unable|cannot|quota|limit|unauthorized|denied|refused|timeout|blocked|unavailable|forbidden|bad.?request|not.?found)' && \
+           ! echo "$line" | __grep -qiE '^git (diff|log|show|status|add|commit|push|pull|fetch|clone|branch|checkout|merge|rebase|stash|tag|remote|reset|revert)\b' && \
+           ! echo "$line" | __grep -qE '^diff --git |^\+\+\+ |^--- |^@@ |^index [0-9a-f]{7}'; then
           short_msg="$line"
           found_valid="true"
           break
@@ -3096,8 +3106,17 @@ $diff_content"
     fi
     # Apply format fix to ensure {emoji} {text} {emoji} format
     short_msg="$(__fix_commit_format "$short_msg")"
-    # Final check - make sure the fixed message is not an error
-    if echo "$short_msg" | __grep -qiE "(error|failed|exception|cannot|unable)"; then
+    # Final check — re-validate the post-format message to catch prompt echoes
+    # that passed the raw check but become obvious once wrapped in emoji
+    local _inner_text
+    _inner_text="$(echo "$short_msg" | sed 's/^[^[:alnum:]]*[[:space:]]*//;s/[[:space:]]*[^[:alnum:]]*$//')"
+    if echo "$_inner_text" | __grep -qiE "(error|failed|exception|cannot|unable)"; then
+      return 1
+    fi
+    if echo "$_inner_text" | __grep -qiE '^git (diff|log|show|status|add|commit|push|pull|fetch|clone|branch|checkout|merge|rebase|stash|tag|remote|reset|revert)\b'; then
+      return 1
+    fi
+    if echo "$_inner_text" | __grep -qE '^\S+\.[a-zA-Z0-9]{1,6}$'; then
       return 1
     fi
     # Validate length after fix (max 72 chars)
