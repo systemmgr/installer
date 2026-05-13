@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131400-git
+##@Version           :  202605131420-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605131400-git"
+VERSION="202605131420-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1564,9 +1564,6 @@ export ANONYMIZE_CWD
 # Execute functions
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Initialize versions (fetch latest if online)
-__init_versions
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Execute commands
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1574,6 +1571,7 @@ __init_versions
 case "$1" in
 init)
   shift 1
+  __init_versions
   __create_versions
   __install_tor_browser
   exit $?
@@ -1581,6 +1579,7 @@ init)
 
 servers)
   shift 1
+  __init_versions
   case "$1" in
   # install and configure the i2p server
   i2p)
@@ -1653,6 +1652,7 @@ tor)
 
 i2p)
   shift 1
+  __init_versions
   __install_i2p_server
   netstatg 7657 2>&1 | grep -q 'java' || printf_exit "i2p does not seem to be running"
   [ -z "$BROWSER" ] || eval "$BROWSER" "http://localhost:7657"
@@ -1661,6 +1661,7 @@ i2p)
 
 freenet)
   shift 1
+  __init_versions
   __install_freenet_server
   netstatg 8888 2>&1 | grep -q 'java' || printf_exit "Freenet does not seem to be running"
   [ -z "$BROWSER" ] || eval "$BROWSER" "http://localhost:8888"
@@ -1725,6 +1726,7 @@ vpn)
 
 lokinet)
   shift 1
+  __init_versions
   if ! __cmd_exists lokinet; then
     __install_lokinet_server
   fi
