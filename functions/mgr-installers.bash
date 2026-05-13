@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  020920211625-git
+##@Version           :  202605122200-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  LICENSE.md
@@ -1081,56 +1081,47 @@ __saved_file_create() { echo "$1" | sudo tee -p "${PKMGR_INSTALLED_LIST_DIR:-/us
 __saved_file_check() { [ -f "${PKMGR_INSTALLED_LIST_DIR:-/usr/local/etc/pkmgr/lists}/${1:-NON_EXISTS}" ] || grep -qsw "$1" "${PKMGR_INSTALLED_LIST_DIR:-/usr/local/etc/pkmgr/lists}" &>/dev/null || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 gem_exists() {
-  [ -n "$(builtin type -P gem 2>/dev/null)" ] || return
+  [ -n "$(builtin type -P gem 2>/dev/null)" ] || return 1
   local package="$1"
   __cmd_exists "$package" && return 0
-  gem list | grep -q "$package" && return 0 || return 1
+  gem list 2>/dev/null | grep -q "^${package} " && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 npm_exists() {
-  local exitCode=1
-  [ -n "$(builtin type -P npm 2>/dev/null || builtin type -P yarn || builtin type -P pnpm || echo '')" ] || return
+  [ -n "$(builtin type -P npm 2>/dev/null || builtin type -P yarn 2>/dev/null || builtin type -P pnpm 2>/dev/null || echo '')" ] || return 1
   local package="$1"
   __cmd_exists "$package" && return 0
-  if __cmd_exists npm && npm list -g --depth=0 2>&1 | grep -q "$package@"; then
-    exitCode=0
-  elif __cmd_exists yarn && yarn list -g --depth=0 2>&1 | grep -q "$package"; then
-    exitCode=0
-  elif __cmd_exists pnpm && pnpm list -g --depth=0 2>&1 | grep -q "$package"; then
-    exitCode=0
+  if __cmd_exists npm && npm list -g --depth=0 2>/dev/null | grep -q "${package}@"; then
+    return 0
+  elif __cmd_exists yarn && yarn global list 2>/dev/null | grep -q "\"${package}@"; then
+    return 0
+  elif __cmd_exists pnpm && pnpm list -g 2>/dev/null | grep -q "^${package} "; then
+    return 0
   fi
-  return $exitCode
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 perl_exists() {
-  [ -n "$(builtin type -P perl 2>/dev/null)" ] || return
-  local package="${1//perl-/}"
-  local statusCode=1
-  __cmd_exists "$package" && return 0
-  if devnull perl -M$package -le 'print $INC{"$package/Version.pm"}'; then
-    statusCode=0
-  elif devnull perl -M$package -le 'print $INC{"$package.pm"}'; then
-    statusCode=0
-  elif devnull perl -M$package -le 'print $INC{"$package"}'; then
-    statusCode=0
-  fi
-  return $statusCode
+  [ -n "$(builtin type -P perl 2>/dev/null)" ] || return 1
+  local raw="${1//perl-/}"
+  local module="${raw//-/::}"
+  __cmd_exists "$raw" && return 0
+  devnull perl -M"$module" -e1 && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 python_exists() {
   local package="$1"
-  local statusCode=1
+  local normalized="${package//-/_}"
+  local py pip
+  py="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null)"
+  pip="$(builtin type -P pip3 2>/dev/null || builtin type -P pip 2>/dev/null)"
   __cmd_exists "$package" && return 0
-  local pip="$(builtin type -P pip3 2>/dev/null || builtin type -P pip2 2>/dev/null || builtin type -P pip 2>/dev/null)"
-  local py="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null)"
-  if [ -n "$py" ]; then
-    if eval $py -m $package 2>/dev/null | grep -q '^' || $pip list | awk '{print $1}' | grep -q "^$package$"; then
-      statusCode=0
-    fi
-  else
-    statusCode=0
-  fi
-  return $statusCode
+  [ -z "$py" ] && return 1
+  [ -n "$pip" ] && devnull "$pip" show "$package" && return 0
+  devnull "$py" -c "import importlib.util; exit(0 if importlib.util.find_spec('$normalized') else 1)" && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 cmd_missing() {
@@ -1313,7 +1304,7 @@ install_perl() {
   local MISSING=""
   local cmd=""
   for cmd in $REQUIRED; do
-    __saved_file_check "$cmd" || perl_missing "$cmd" || MISSING+="$(echo "perl-$1" | sed 's#::#-#g') "
+    __saved_file_check "$cmd" || perl_missing "$cmd" || MISSING+="perl-${cmd//::/-} "
   done
   if [ -n "$MISSING" ]; then
     if [ -f "$(builtin type -P pkmgr 2>/dev/null)" ]; then

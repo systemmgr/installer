@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  020920211625-git
+##@Version           :  202605122200-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  LICENSE.md
@@ -1080,52 +1080,47 @@ __devnull() { tee &>/dev/null && return 0 || return 1; }
 __saved_file_create() { sudo touch "${PKMGR_INSTALLED_LIST_DIR:-/usr/local/etc/pkmgr/lists}/$1" || true; }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 gem_exists() {
-  [ -n "$(builtin type -P gem 2>/dev/null)" ] || return
+  [ -n "$(builtin type -P gem 2>/dev/null)" ] || return 1
   local package="$1"
-  gem list | grep -q "$package" && return 0 || cmd_missing "$package" &>/dev/null || return 1
+  __cmd_exists "$package" && return 0
+  gem list 2>/dev/null | grep -q "^${package} " && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 npm_exists() {
-  [ -n "$(builtin type -P npm 2>/dev/null || builtin type -P yarn || builtin type -P pnpm || echo '')" ] || return
+  [ -n "$(builtin type -P npm 2>/dev/null || builtin type -P yarn 2>/dev/null || builtin type -P pnpm 2>/dev/null || echo '')" ] || return 1
   local package="$1"
-  if __cmd_exists npm && npm list -g --depth=0 2>&1 | grep -q "$package@"; then
+  __cmd_exists "$package" && return 0
+  if __cmd_exists npm && npm list -g --depth=0 2>/dev/null | grep -q "${package}@"; then
     return 0
-  elif __cmd_exists yarn && yarn list -g --depth=0 2>&1 | grep -q "$package"; then
+  elif __cmd_exists yarn && yarn global list 2>/dev/null | grep -q "\"${package}@"; then
     return 0
-  elif __cmd_exists pnpm && pnpm list -g --depth=0 2>&1 | grep -q "$package"; then
+  elif __cmd_exists pnpm && pnpm list -g 2>/dev/null | grep -q "^${package} "; then
     return 0
-  elif __cmd_exists "$package"; then
-    return 0
-  else
-    return 1
   fi
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 perl_exists() {
-  [ -n "$(builtin type -P perl 2>/dev/null)" ] || return
-  local package="${1//perl-/}"
-  if devnull perl -M$package -le 'print $INC{"$package/Version.pm"}' ||
-    devnull perl -M$package -le 'print $INC{"$package.pm"}' ||
-    devnull perl -M$package -le 'print $INC{"$package"}' || cmd_missing "$package" &>/dev/null; then
-    return 0
-  else
-    return 1
-  fi
+  [ -n "$(builtin type -P perl 2>/dev/null)" ] || return 1
+  local raw="${1//perl-/}"
+  local module="${raw//-/::}"
+  __cmd_exists "$raw" && return 0
+  devnull perl -M"$module" -e1 && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 python_exists() {
   local package="$1"
-  local py="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null)"
-  if [ -n "$py" ]; then
-    if [ "$($py -c 'import importlib.util; print(0 if importlib.util.find_spec("'"$package"'") else 1)' 2>/dev/null)" = 0 ]; then
-      return 0
-    elif cmd_missing "$package" &>/dev/null; then
-      return 0
-    else
-      return 0
-    fi
-    return 0
-  fi
+  local normalized="${package//-/_}"
+  local py pip
+  py="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null)"
+  pip="$(builtin type -P pip3 2>/dev/null || builtin type -P pip 2>/dev/null)"
+  __cmd_exists "$package" && return 0
+  [ -z "$py" ] && return 1
+  [ -n "$pip" ] && devnull "$pip" show "$package" && return 0
+  devnull "$py" -c "import importlib.util; exit(0 if importlib.util.find_spec('$normalized') else 1)" && return 0
+  return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 cmd_missing() {
@@ -1296,7 +1291,7 @@ install_perl() {
   local MISSING=""
   local cmd=""
   for cmd in $REQUIRED; do
-    perl_missing "$cmd" || MISSING+="$(echo "perl-$1" | sed 's#::#-#g') "
+    perl_missing "$cmd" || MISSING+="perl-${cmd//::/-} "
   done
   if [ -n "$MISSING" ]; then
     if [ -f "$(builtin type -P pkmgr 2>/dev/null)" ]; then

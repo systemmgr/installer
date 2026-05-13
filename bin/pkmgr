@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605080558-git
+##@Version           :  202605122200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605080558-git"
+VERSION="202605122200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -676,23 +676,24 @@ __cpan_remove() {
 __pip_run() {
   local packages="$*"
   local pip_opts=""
-  pip3="$(ls /usr/bin/pip*3* 2>/dev/null | head -n 1)"
-  py_bin="$(type -P python3 || type -P python2 || type -P python || return)"
+  py_bin="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null || return)"
   py_version="$($py_bin --version | sed 's|[pP]ython ||g' | awk -F '.' '{print $1$2}' | grep '[0-9]' || echo "0")"
   PKMGR_TEMP_FILE="${PKMGR_TEMP_FILE:-$(mktemp $PKMGR_TEMP_DIR/XXXXXX 2>/dev/null)}"
   [ -n "$py_bin" ] || printf_exit "python is not installed" >&2
   [ -n "$packages" ] || printf_exit "Usage: $APPNAME pip install [package]" >&2
-  pip="$(type -P $pip3 || type -P pip || echo "$py_bin -m pip")"
+  pip="$(builtin type -P pip3 2>/dev/null || builtin type -P pip 2>/dev/null || echo "$py_bin -m pip")"
   cat <<EOF >"$PKMGR_TEMP_FILE"
 pip="$pip"
-[ "$py_version" -le "310" ] && pip_opts+="--use-pep517"
-[ "$py_version" -gt "310" ] && pip_opts+="--break-system-packages " || pip_opts=""
+pip_opts=""
+if [ "$py_version" -gt "310" ]; then
+  pip_opts="--break-system-packages"
+fi
 [ -n "\$pip" ] && exitStatus=0 || { echo "pip is not installed" >&2 && exit 1; }
 [ -f "/etc/profile.d/pyenv.sh" ] && . /etc/profile.d/pyenv.sh
-echo "Running as: $SUDO_USER"
+echo "Running as: ${SUDO_USER:-$USER}"
 for pkg_name in $packages; do
   name="\${pkg_name// /}"
-  sudo -HE -u $SUDO_USER \$pip install --upgrade --user \$pip_opts "\$name" 2>&1 | grep -v "DeprecationWarning" || true
+  sudo -HE -u ${SUDO_USER:-$USER} \$pip install --upgrade --user \$pip_opts "\$name" 2>&1 | grep -v "DeprecationWarning" || true
   [ "\${PIPESTATUS[0]}" -ne 0 ] && exitStatus=\$((exitStatus + 1))
 done
 exit \$exitStatus
@@ -707,23 +708,24 @@ EOF
 #
 __pip_remove() {
   local packages="$*"
-  pip3="$(ls /usr/bin/pip*3* 2>/dev/null | head -n 1)"
-  py_bin="$(type -P python3 || type -P python2 || type -P python || return)"
+  py_bin="$(builtin type -P python3 2>/dev/null || builtin type -P python2 2>/dev/null || builtin type -P python 2>/dev/null || return)"
   py_version="$($py_bin --version | sed 's|[pP]ython ||g' | awk -F '.' '{print $1$2}' | grep '[0-9]' || echo "0")"
   PKMGR_TEMP_FILE="${PKMGR_TEMP_FILE:-$(mktemp $PKMGR_TEMP_DIR/XXXXXX 2>/dev/null)}"
   [ -n "$py_bin" ] || printf_exit "python is not installed" >&2
   [ -n "$packages" ] || printf_exit "Usage: $APPNAME pip remove [package]" >&2
-  pip="$(type -P $pip3 || type -P pip || echo "$py_bin -m pip")"
+  pip="$(builtin type -P pip3 2>/dev/null || builtin type -P pip 2>/dev/null || echo "$py_bin -m pip")"
   cat <<EOF >"$PKMGR_TEMP_FILE"
 pip="$pip"
+pip_opts=""
+if [ "$py_version" -gt "310" ]; then
+  pip_opts="--break-system-packages"
+fi
 [ -f "/etc/profile.d/pyenv.sh" ] && . /etc/profile.d/pyenv.sh
 [ -n "\$pip" ] && exitStatus=0 || { echo "pip is not installed" >&2 && exit 1; }
-[ "$py_version" -le "310" ] && pip_opts+="--use-pep517"
-[ "$py_version" -gt "310" ] && pip_opts+="--break-system-packages " || pip_opts=""
-echo "Running as: $SUDO_USER"
+echo "Running as: ${SUDO_USER:-$USER}"
 for file in $packages; do
   name="\${file// /}"
-  sudo -HE -u $SUDO_USER \$pip uninstall --yes --user \$py_version "\$name" || exitStatus=\$((exitStatus + 1))
+  sudo -HE -u ${SUDO_USER:-$USER} \$pip uninstall --yes --user \$pip_opts "\$name" || exitStatus=\$((exitStatus + 1))
   if [ -f "/usr/local/bin/\$name" ]; then
     rm -Rf "/usr/local/bin/\$name"
   fi
