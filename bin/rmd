@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605011146-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605011146-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -314,6 +314,7 @@ __trap_exit() {
   if builtin type -t __trap_exit_local | grep -q 'function'; then __trap_exit_local; fi
   return $exitCode
 }
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -493,7 +494,7 @@ __rmd_delete_one() {
   local file="$1"
   if [ -d "$file" ]; then
     printf_green "Deleting folder and all files within: $file - this is unsafe "
-    [ -z "$RMD_SLEEP_TIMEOUT" ] && sleep 2
+    [ -z "$RMD_SLEEP_TIMEOUT" ] && __sleep 2
     __rm_file "$file"
     return $?
   elif [ -L "$file" ]; then

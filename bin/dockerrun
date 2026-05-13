@@ -2,7 +2,7 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -22,7 +22,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -210,6 +210,8 @@ __grep() { grep "$@" 2>/dev/null; }
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
   { [ $(id -u) -eq 0 ] || [ $EUID -eq 0 ] || [ "$WHOAMI" = "root" ]; } && return 0 || return 1
@@ -322,7 +324,7 @@ __docker_run() {
   cmd="$DOCKERRUN_DOCKER_BIN run -d --restart always --network $DOCKERRUN_NETWORK -it "
   cmd+="--name $DOCKERRUN_NAME $DOCKERRUN_OPTS $DOCKERRUN_MOUNTS $DOCKERRUN_PORTS $DOCKERRUN_IMAGE"
   #printf_purple "$cmd"
-  eval $cmd >/dev/null 2>"$DOCKERRUN_TEMP_FILE" && sleep 10 || return 1
+  eval $cmd >/dev/null 2>"$DOCKERRUN_TEMP_FILE" && __sleep 10 || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __show_log_file() { tail -n2 "$DOCKERRUN_TEMP_FILE" | sed 's|docker: Error.*daemon: ||g;s|\. .*||g;s|: .*||g' | grep -v 'docker run --help' | grep '^' || tail -n1 "$DOCKERRUN_TEMP_FILE"; }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605122010-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605122010-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -92,6 +92,8 @@ __cmd_exists() {
   [ $exitCode -eq 0 ] || exitCode=3
   return ${exitCode:-0}
 }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Check for a valid internet connection
 __am_i_online() {
@@ -308,7 +310,7 @@ __simple_loop() {
       printf '\r%s' " Pinging $i   " &&
         ping -c 1 $i &>/dev/null && printf '\r %s' "Online  " ||
         printf '\r%s' "Offline "
-      sleep 1
+      __sleep 1
     done
   done
 }
@@ -449,7 +451,7 @@ __run_loop() {
       send_notify="true"
       send_notify_status="offline"
     fi
-    sleep $interval
+    __sleep $interval
     date="$(date +'%H:%M:%S')"
   done
 }

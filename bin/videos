@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -287,6 +287,8 @@ __trap_exit() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 xine-ui() { xine || xine-ui || false; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -320,7 +322,7 @@ __run_menu_start() {
   else
     echo -e "\n\n\n\n"
     printf_red "$1 is already running"
-    sleep 5
+    __sleep 5
     return 1
   fi
 }
@@ -333,7 +335,7 @@ __attempt_install_menus() {
     zenity --width=400 --timeout=10 --title="install $prog" --question --text="$prog is not installed! \nshould I try to install it?" || return 1
   }
   if message; then
-    sleep 2
+    __sleep 2
     printf '\033[2J\033[H'
     __pkmgr_gui "$prog"
     type -P "$prog" &>/dev/null && pkmgr_exitCode=0 || pkmgr_exitCode=1

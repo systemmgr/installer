@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -19,7 +19,7 @@
 # @@Template         :  bash/system
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -231,6 +231,8 @@ __trap_exit() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __notifications() {
   __cmd_exists notifications || return
@@ -434,7 +436,7 @@ __capture_with_flameshot() {
   local output="$2"
   local cmd="flameshot"
 
-  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && sleep "$SCREENSHOT_MENU_DELAY"
+  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && __sleep "$SCREENSHOT_MENU_DELAY"
 
   case "$mode" in
   full) cmd="$cmd full" ;;
@@ -506,7 +508,7 @@ __capture_with_grim() {
   [ "$SCREENSHOT_MENU_SHOW_CURSOR" = "true" ] && cmd="$cmd -c"
   [ -n "$SCREENSHOT_MENU_QUALITY" ] && cmd="$cmd -q $SCREENSHOT_MENU_QUALITY"
 
-  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && sleep "$SCREENSHOT_MENU_DELAY"
+  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && __sleep "$SCREENSHOT_MENU_DELAY"
 
   case "$mode" in
   full) cmd="$cmd" ;;
@@ -581,7 +583,7 @@ __capture_with_import() {
 
   # Build command options safely
   [ -n "$SCREENSHOT_MENU_QUALITY" ] && import_opts="$import_opts -quality $SCREENSHOT_MENU_QUALITY"
-  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && sleep "$SCREENSHOT_MENU_DELAY"
+  [ -n "$SCREENSHOT_MENU_DELAY" ] && [ "$SCREENSHOT_MENU_DELAY" -gt 0 ] && __sleep "$SCREENSHOT_MENU_DELAY"
 
   # Add safer import options to prevent segfaults
   import_opts="$import_opts -silent"

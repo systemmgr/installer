@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605091013-git
+##@Version           :  202605121200-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  WTFPL
@@ -18,7 +18,7 @@
 # shellcheck disable=SC1001,SC2003,SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605091013-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -325,6 +325,8 @@ __disk_usage_pre() { export total_disk_usage="$(\df -k | grep '/$' | awk '{print
 __api_test() { curl -q -LSsfI "$DOCKERMGR_HUB_URL/v2/repositories/$1" &>/dev/null || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __col() { awk -v col=$1 '{print $col}' | grep '^' || return 1; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __docker() { eval $DOCKERMGR_DOCKER_BIN "$@" 2>"$DOCKERMGR_TEMP_FILE" || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1688,7 +1690,7 @@ __k3b_cmd() {
       printf_cyan "Starting k3s service..."
       if sudo systemctl start k3s; then
         printf_green "k3s started successfully"
-        sleep 5
+        __sleep 5
         __k3b_status
       else
         printf_red "Failed to start k3s"
@@ -1713,7 +1715,7 @@ __k3b_cmd() {
     printf_cyan "Restarting k3s service..."
     if sudo systemctl restart k3s; then
       printf_green "k3s restarted successfully"
-      sleep 5
+      __sleep 5
       __k3b_status
     else
       printf_red "Failed to restart k3s"
@@ -1890,7 +1892,7 @@ __k3b_init() {
       break
     fi
     printf "."
-    sleep 2
+    __sleep 2
     attempts=$((attempts + 1))
   done
 
@@ -2001,7 +2003,7 @@ __minikube_dashboard() {
     {
       unbuffer minikube dashboard --url false --port 18080 2>&1 | printf_readline 7 &
       disown
-      sleep 30
+      __sleep 30
     }
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2057,7 +2059,7 @@ __minikube_init() {
         printf_purple "Setting up minikube dashboard " &&
         __minikube_dashboard |& grep -v '^$' &
       disown
-      sleep 30
+      __sleep 30
       echo &&
         [ "$driver" != "none" ] || [ "$driver" != "docker" ] &&
         printf_yellow="default login is, username: docker & password: tcuser."
@@ -3484,7 +3486,7 @@ test)
       -v $volumes_dir/config:/config:z \
       $registry_url:latest &>"$DOCKERMGR_TEMP_FILE" && printf_cyan "Created $container_name" && true || false
     [ $? -eq 0 ] || printf_exit "Failed to create $container_name: $(grep -shi 'error' "$DOCKERMGR_TEMP_FILE" | head -n1)"
-    printf_yellow "run dockermgr log $container_name" && sleep 5
+    printf_yellow "run dockermgr log $container_name" && __sleep 5
     __container_exists "$container_name" &>/dev/null || exit 1
     printf_purple "mounted volumes to $volumes_dir"
     exit 0
@@ -3508,7 +3510,7 @@ test)
     exit 0
   elif [ -n "$status" ]; then
     printf_cyan "Attempting to start $name"
-    if __docker start "$name" &>"$DOCKERMGR_TEMP_FILE" && sleep 3; then
+    if __docker start "$name" &>"$DOCKERMGR_TEMP_FILE" && __sleep 3; then
       printf_purple "Entering container: $name"
       __docker_exec "$name" $args 2>/dev/null
       exit 0
@@ -3770,7 +3772,7 @@ minikube)
   elif [ "$1" = "dashboard" ]; then
     shift 1
     __minikube_dashboard &
-    sleep 30
+    __sleep 30
   elif [ "$1" = "services" ]; then
     shift 1
     __minikube_services

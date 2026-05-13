@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -241,6 +241,8 @@ __help() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
@@ -493,7 +495,7 @@ run_caddy_server() {
     __sudo -HE -u "$GEN_CADDY_DEFAULT_USER" "$GEN_CADDY_BIN_FILE" start --config="$GEN_CADDY_SERVER_FILE" --pidfile="$GEN_CADDY_FILE_DIR/caddy.pid" --watch 2>&1 | tee -p "$GEN_CADDY_LOG_DIR/caddy.log" &>/dev/null || false &
     statusCode=$?
   fi
-  sleep 1
+  __sleep 1
   return $statusCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -520,7 +522,7 @@ startcaddy() {
     else
       run_caddy_server
     fi
-    sleep 1
+    __sleep 1
     # restart or reload php for smooth environment
     hash php 2>/dev/null && restartphpfpm
     pids=$(__get_caddy_pid)
@@ -540,7 +542,7 @@ stopcaddy() {
     printf_blue "Shutting down $GEN_CADDY_NAME..."
     # Wait if Caddy uptime is less than 5 seconds
     if [ $secs -lt 5 ]; then
-      sleep 4
+      __sleep 4
     fi
     if [ -e "/etc/init/caddy.conf" ] || [ -e "/etc/systemd/system/caddy.service" ]; then
       # Most arch based linux don't have service
@@ -553,7 +555,7 @@ stopcaddy() {
     else
       __sudo -HE $GEN_CADDY_DEFAULT_USER $GEN_CADDY_BIN_FILE stop &>/dev/null
     fi
-    sleep 1
+    __sleep 1
     [ -f "$caddypid" ] && rm -Rf "$caddypid"
     printf_blue "[$(tput setaf 2)DONE$(tput sgr0)]"
   fi
@@ -572,7 +574,7 @@ reloadcaddy() {
     else
       kill -USR1 "$pids"
     fi
-    sleep 2
+    __sleep 2
     printf_blue "[$(tput setaf 2)DONE$(tput sgr0)]"
     printf_blue "To restart, use $(tput setaf 6)$APPNAME restart$(tput sgr0)"
     printf_blue "Refresh your browser at least 3 times to take affect"
@@ -817,12 +819,12 @@ updatecaddy() {
   isGreater=$(compareVersion "$CADDYV" "$caddyversion")
   if [ "$isGreater" != ">" ]; then
     printf_blue "Looks like you already have latest version installed."
-    sleep 0.1
+    __sleep 0.1
     exit
   fi
   # Download caddy
   getcaddy update
-  sleep 0.1
+  __sleep 0.1
   # Stop current process if found
   if [ -n "$pids" ]; then
     printf_blue "Caddy is running!"
@@ -831,10 +833,10 @@ updatecaddy() {
   fi
   # Delete Caddy folder
   printf_blue "Removing current $GEN_CADDY_NAME from $GEN_CADDY_BIN_FILE"
-  sleep 0.2
+  __sleep 0.2
   __rm_rf "${GEN_CADDY_BIN_FILE:?}"
   printf_blue "[$(tput setaf 2)DONE$(tput sgr0)]"
-  sleep 0.1
+  __sleep 0.1
   # Extract Caddy to appropriate folder
   printf_blue "Extracting $GEN_CADDY_NAME to $GEN_CADDY_FILE_DIR..."
   if ! __tar_downloaded; then
@@ -1103,7 +1105,7 @@ generate_random_port() {
       exitCode=0
       break
     fi
-    sleep 0.1
+    __sleep 0.1
   done
   __number
   return ${exitCode:-0}
@@ -1399,10 +1401,10 @@ deletecaddy() {
       if [ -n "$pids" ]; then
         printf_blue "Found Caddy is running!"
         stopcaddy
-        sleep 2
+        __sleep 2
       fi
       __caddy_user_install && kill -9 "$pids" &>/dev/null || __sudo kill -9 "$pids" &>/dev/null
-      sleep 1
+      __sleep 1
       # Disable and remove startup script if exist
       removeservice
       # Backup Caddyfile if exists, usually on /etc/Caddyfile.
@@ -1474,7 +1476,7 @@ deletecaddydata() {
   case $option in
   [yY][eE][sS] | [yY])
     printf_blue "Deleting $GEN_CADDY_WWW_DIR (data)..."
-    sleep 2
+    __sleep 2
     # deleting caddy html folder
     __rm_rf $GEN_CADDY_WWW_DIR
     printf_blue "[$(tput setaf 2)DONE$(tput sgr0)]"
@@ -1605,7 +1607,7 @@ __execute_gen_caddy() {
     shift 1
     amiroot
     stopcaddy
-    sleep 2
+    __sleep 2
     startcaddy
     ;;
   'status' | 'caddystatus')

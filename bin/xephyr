@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -287,6 +287,8 @@ __xephyr_running() {
   [ -n "$(pidof "$XEPHYR_BIN_FILE" | grep '^' || false)" ] || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __start_xephyr() {
   __xephyr_running && return
@@ -294,8 +296,8 @@ __start_xephyr() {
   $XEPHYR_BIN_FILE -br -ac -noreset -screen $RESOLUTION :$XEPHYR_DISPLAY |& tee -p -a "$XEPHYR_LOG_DIR/xephyr_$XEPHYR_DISPLAY.log" &>/dev/null &
   printf_yellow "executing: $XEPHYR_BIN_FILE -br -ac -noreset -screen $RESOLUTION :$XEPHYR_DISPLAY"
   printf_cyan "Log file is in $XEPHYR_LOG_DIR/xephyr_$XEPHYR_DISPLAY.log"
-  sleep 2
-  __xephyr_running && sleep 3 || return 1
+  __sleep 2
+  __xephyr_running && __sleep 3 || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined variables/import external variables
@@ -532,7 +534,7 @@ if __xephyr_running; then
   __notifications "Running $1 on display $DISPLAY"
   "${@:-}" |& tee -p -a "$XEPHYR_LOG_DIR/xephyr_$XEPHYR_DISPLAY.log" &>/dev/null &
   exitCode=$?
-  sleep 2
+  __sleep 2
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set exit code

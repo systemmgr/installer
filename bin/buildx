@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605052229-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605052229-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -392,6 +392,8 @@ __trap_exit() {
   if builtin type -t __trap_exit_local | grep -q 'function'; then __trap_exit_local; fi
   return $exitCode
 }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __trap_exit_local() {
@@ -1028,13 +1030,13 @@ __wait_for_previous_build() {
       [ -f "$BUILDX_PID_FILE" ] && pid="$(<"$BUILDX_PID_FILE")" || break
       printf '\r%s' "waiting for previous build to complete: $((count * sleep / 60)) minutes"
       count=$((count - 1))
-      sleep $sleep
+      __sleep $sleep
     done
   fi
   [ -f "$BUILDX_PID_FILE" ] && rm -Rf "$BUILDX_PID_FILE"
   buildx init &>/dev/null
   #BUILDX_CLEANUP="false"
-  sleep 60
+  __sleep 60
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __remove_pid() {
@@ -1390,7 +1392,7 @@ __run_docker_script() {
     printf_blue "Adding tags: $ADDITIONAL_PRETTY"
     printf '%s\n' "# Adding tags: $ADDITIONAL_PRETTY" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
   fi
-  sleep 2
+  __sleep 2
   printf 'Executing: %s\n' "$set_build_command" >> "$BUILDX_CUSTOM_LOG_FILE"
   __logging_build "$set_build_command" "$BUILDX_CUSTOM_LOG_FILE" "$BUILDX_CUSTOM_ERR_FILE" || false
   return $?
@@ -1416,7 +1418,7 @@ __run_dockermgr_script() {
     printf_blue "Adding tags: $ADDITIONAL_PRETTY"
     printf '%s\n' "# Adding tags: $ADDITIONAL_PRETTY" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
   fi
-  sleep 2
+  __sleep 2
   printf 'Executing: %s\n' "$build_command" >> "$BUILDX_CUSTOM_LOG_FILE"
   __logging_build "$set_build_command" "$BUILDX_CUSTOM_LOG_FILE" "$BUILDX_CUSTOM_ERR_FILE" || false
   return $?
@@ -1440,7 +1442,7 @@ __run_buildx_script() {
     printf_blue "Adding tags: $ADDITIONAL_PRETTY"
     printf '%s\n' "# Adding tags: $ADDITIONAL_PRETTY" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
   fi
-  sleep 2
+  __sleep 2
   printf 'Executing: %s\n' "$set_build_command" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
   
   # Try build with retries for push failures
@@ -1474,14 +1476,14 @@ __run_buildx_script() {
           __reinit_buildx
           BUILDX_FORCE=""
           BUILDX_FORCE_REINSTALL=""
-          sleep 5
+          __sleep 5
         fi
       # Push failure: build itself completed, only the registry handoff failed
       elif grep -qi "no active session\|context deadline\|failed to push" <<<"$err_tail"; then
         if [ $retry_count -le $max_retries ]; then
           printf_yellow "Push failed due to session timeout, retrying in ${retry_delay}s (attempt $retry_count of $max_retries)..."
           printf '%s\n' "# Push failed, retrying in ${retry_delay}s (attempt $retry_count of $max_retries)" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
-          sleep $retry_delay
+          __sleep $retry_delay
 
           # For retry, use cache to avoid full rebuild - remove --no-cache and --pull for faster retry
           if [ "$retry_count" -gt 1 ]; then
@@ -1518,7 +1520,7 @@ __run_build_script() {
     printf_blue "Adding tags: $ADDITIONAL_PRETTY"
     printf '%s\n' "# Adding tags: $ADDITIONAL_PRETTY" | tee -a "$BUILDX_CUSTOM_LOG_FILE" &>/dev/null
   fi
-  sleep 2
+  __sleep 2
   printf 'Executing: %s\n' "$set_build_command" >> "$BUILDX_CUSTOM_LOG_FILE"
   __logging_build "$set_build_command" "$BUILDX_CUSTOM_LOG_FILE" "$BUILDX_CUSTOM_ERR_FILE" || false
   return $?

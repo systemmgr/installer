@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122010-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122010-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -254,6 +254,8 @@ __help() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
@@ -1000,7 +1002,7 @@ __monitor_task() {
       esac
     fi
 
-    sleep 5
+    __sleep 5
     wait_time=$((wait_time + 5))
   done
 
@@ -1462,7 +1464,7 @@ __init_connection() {
     if printf_answer_yes "$power_on"; then
       if __start_stop_vm "qemu" "start"; then
         vm_status="on"
-        [ -n "$PROXMOX_CLI_SSH_IP" ] && printf_yellow "Waiting 30 seconds for the vm to boot" && sleep 30
+        [ -n "$PROXMOX_CLI_SSH_IP" ] && printf_yellow "Waiting 30 seconds for the vm to boot" && __sleep 30
       else
         if [ -n "$PROXMOX_CLI_SSH_IP" ]; then
           printf_exit "Failed to get ip address for $PROXMOX_CLI_DEFAULT_NODE_ID: Ensure you have qemu-guest-agent installed and running"
@@ -1470,7 +1472,7 @@ __init_connection() {
           printf_exit "Failed to start $vm_name on $PROXMOX_CLI_DEFAULT_NODE_ID"
         fi
       fi
-      sleep 2
+      __sleep 2
     else
       printf_exit "User cancelled"
     fi
@@ -1860,11 +1862,11 @@ __run_curl() {
 
       # Now try to launch viewers if SPICE file was created successfully
       if __cmd_exists remote-viewer; then
-        printf_yellow "🚀 Attempting to launch the client: $FILENAME" && sleep 2
+        printf_yellow "🚀 Attempting to launch the client: $FILENAME" && __sleep 2
         __run_spice_viewer "$FILENAME" &>/dev/null
         return $?
       elif __cmd_exists virt-viewer; then
-        printf_yellow "🚀 Attempting to launch virt-viewer: $FILENAME" && sleep 2
+        printf_yellow "🚀 Attempting to launch virt-viewer: $FILENAME" && __sleep 2
         __run_spice_viewer "$FILENAME" &>/dev/null
         return $?
       else

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605122010-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605122010-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -219,6 +219,8 @@ __help() {
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
   { [ $(id -u) -eq 0 ] || [ $EUID -eq 0 ] || [ "$WHOAMI" = "root" ]; } && return 0 || return 1
@@ -402,7 +404,7 @@ __run_menu() {
       fi
     else
       __notifications "The tor browser is not installed\nLaunching $MYBROWSER_NAME instead"
-      sleep 2
+      __sleep 2
       export MYBROWSER_NOTIFY_ENABLED="no"
     fi
     ;;
@@ -440,12 +442,12 @@ __run_menu() {
           export MOZ_ENABLE_WAYLAND=0
         else
           __notifications "I2P router is running but no compatible browser found\nPlease configure your browser manually:\nHTTP Proxy: 127.0.0.1:4444\nHTTPS Proxy: 127.0.0.1:4445"
-          sleep 3
+          __sleep 3
           export MYBROWSER_NOTIFY_ENABLED="no"
         fi
       else
         __notifications "I2P browser not found and I2P router not running\nPlease install i2pd or Java I2P router\nLaunching $MYBROWSER_NAME instead"
-        sleep 2
+        __sleep 2
         export MYBROWSER_NOTIFY_ENABLED="no"
       fi
     fi

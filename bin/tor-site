@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -302,6 +302,8 @@ __trap_exit() {
 # User defined functions
 __test_numbers() { test -n "$1" && test -z "${1//[0-9]/}" && return 0 || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 __is_root() { {
   sudo -ll -U ${1:-$USER} 2>/dev/null | grep -q 'ALL' &>/dev/null ||
     sudo -n -u ${1:-$USER} &>/dev/null || [ "$EUID" = 0 ]
@@ -339,7 +341,7 @@ __run_server() {
   { python3 -m http.server --cgi --bind ${TOR_SITE_DEFAULT_HOST:-127.0.0.1} "$TOR_SITE_DEFAULT_PORT" &>/dev/null ||
     python2 -m http.server --cgi --bind ${TOR_SITE_DEFAULT_HOST:-127.0.0.1} "$TOR_SITE_DEFAULT_PORT" &>/dev/null ||
     python -m SimpleHTTPServer "$TOR_SITE_DEFAULT_PORT" &>/dev/null || return 1; } &
-  sleep 1
+  __sleep 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_service_server() {

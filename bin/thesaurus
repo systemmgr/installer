@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -296,6 +296,8 @@ __trap_exit() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __yad__text() {
   set -o pipefail
@@ -338,7 +340,7 @@ __execute_thesaurus() {
   else
     printf_custom $THESAURUS_OUTPUT_COLOR_ERROR "No results found for $1"
   fi
-  sleep 1
+  __sleep 1
   [ -f "$THESAURUS_TEMP_FILE" ] && rm -Rf "$THESAURUS_TEMP_FILE" &>/dev/null
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

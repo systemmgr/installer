@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202604281008-git
+##@Version           :  202604281013-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202604281008-git"
+VERSION="202604281013-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -333,6 +333,8 @@ __help() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
@@ -1107,7 +1109,7 @@ __execute_download() {
   while [ "$attempt" -le "$max_retries" ]; do
     if [ "$attempt" -gt 0 ]; then
       printf_yellow "Download failed, resuming in ${retry_delay}s (attempt $((attempt + 1)) of $((max_retries + 1)))..."
-      sleep "$retry_delay"
+      __sleep "$retry_delay"
     fi
     if [[ "$GRAB_LATEST" == rsync://* ]]; then
       __rsync_download "$GRAB_LATEST" "$GRAB_CURL_FILE" && success="true" || success=""
@@ -1542,7 +1544,7 @@ __rsync_download() {
         __progress_bar "$current_size" "$total_size"
       fi
     fi
-    sleep 0.5
+    __sleep 0.5
   done
 
   # Reset trap
@@ -1642,7 +1644,7 @@ __monitor_transmission() {
   local status="" percent="" done_check=""
 
   # Get the most recent torrent ID
-  sleep 2
+  __sleep 2
   torrent_id="$(transmission-remote "$server" -l 2>/dev/null | tail -2 | head -1 | awk '{print $1}')"
 
   if [ -z "$torrent_id" ] || [ "$torrent_id" = "ID" ]; then
@@ -1685,7 +1687,7 @@ __monitor_transmission() {
       "$percent" "$status" \
       "$_TPUT_RESET"
 
-    sleep 2
+    __sleep 2
   done
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2648,7 +2650,7 @@ __download_with_progress() {
       current_size=$(stat -c%s "$output" 2>/dev/null || stat -f%z "$output" 2>/dev/null || echo 0)
       __progress_bar "$current_size" "$total_size"
     fi
-    sleep 0.5
+    __sleep 0.5
   done
 
   # Reset trap

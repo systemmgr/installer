@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605122010-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  git.io/casjay
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605122010-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -166,7 +166,7 @@ printf_counter() {
   local message="${3:-Waiting}"
   for ((i = duration; i > 0; i -= interval)); do
     printf "\r$message $i seconds... "
-    sleep "$interval"
+    __sleep "$interval"
   done
   printf "\r\033[K"
 }
@@ -349,6 +349,8 @@ __is_an_option() {
     return 0
   fi
 }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __user_is_root() {
   if [ $(id -u) -eq 0 ] || [ $EUID -eq 0 ] || [ "$WHOAMI" = "root" ]; then
@@ -729,7 +731,7 @@ __background_job() {
         __notifications "Wallpaper Changer" "Background service stopped"
         return 0
       fi
-      sleep 5
+      __sleep 5
       slept=$((slept + 5))
     done
   done
@@ -747,7 +749,7 @@ __start() {
   fi
   __notifications "Wallpaper Changer" "Enabling randomwallpaper background job:\nChanging every $DISPLAY_TIME\n$COUNT_MESSAGE"
   __rm_rf "$RANDOMWALLPAPER_KILL_FILE" "$RANDOMWALLPAPER_RUN_FILE"
-  sleep 60
+  __sleep 60
   sh -c "$APPNAME bg run $SLEEP_TIME &>/dev/null &" &
   disown
 }
@@ -1039,13 +1041,13 @@ __set_wallpaper_wayland() {
   if __cmd_exists swww; then
     if ! pgrep -x swww-daemon &>/dev/null; then
       swww-daemon &>/dev/null &
-      sleep 0.5
+      __sleep 0.5
     fi
     swww img "$wallpaper" --transition-type none 2>/dev/null && return 0
   fi
   if __cmd_exists swaybg; then
     pkill -x swaybg 2>/dev/null
-    sleep 0.1
+    __sleep 0.1
     swaybg -i "$wallpaper" -m fill &>/dev/null &
     disown 2>/dev/null
     return 0
@@ -1420,15 +1422,15 @@ __term() {
     e)
       if [[ "$ENABLED" = "disable" ]]; then
         __startup_disable
-        sleep 5s
+        __sleep 5
       elif [[ "$ENABLED" = "enable" ]]; then
         __startup
-        sleep 5s
+        __sleep 5
       fi
       ;;
     k)
       sh -c "randomwallpaper bg kill"
-      sleep 3
+      __sleep 3
       ;;
     h)
       shift 1

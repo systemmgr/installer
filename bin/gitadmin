@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605060643-git
+##@Version           :  202605060648-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605060643-git"
+VERSION="202605060648-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -462,6 +462,8 @@ __help() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # check if arg is a builtin option
 __is_an_option() { if [[ "$ARRAY" == *"${1:-^}"* ]]; then return 1; else return 0; fi; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Is current user root
 __user_is_root() {
@@ -3352,7 +3354,7 @@ __github_to_gitea() {
       printf_cyan "🚀🚀 Found $GITHUB_ORG_NAME/$REPO_NAME, importing... 🚀🚀"
       curl -q -LfSs --retry 2 --retry-max-time 3 --retry-delay 3 -X POST -u "$GITEA_USERNAME:$GITEA_TOKEN" "$GITEA_DOMAIN/api/v1/repos/migrate" -H 'accept: application/json' -H 'Content-Type: application/json' -d "{ \"repo_name\": \"$REPO_NAME\", \"repo_owner\": \"$GITEA_ORG_NAME\", \"auth_username\": \"$GITHUB_USERNAME\", \"auth_token\": \"$GITHUB_TOKEN\", \"clone_addr\": \"$URL\", \"description\": \"$description\", \"website\": \"$website\", \"avatar_url\": \"$avatar\", \"issues\": true, \"labels\": true, \"lfs\": true, \"milestones\": true, \"mirror\": true, \"mirror_interval\": \"3600s\", \"private\": $private, \"pull_requests\": true, \"releases\": true, \"uid\": 0, \"wiki\": true , \"service\": \"git\" }" >"$GITADMIN_TEMP_FILE" 2>&1
       grep -qs 'created_at' "$GITADMIN_TEMP_FILE" && printf_blue "🔽⏫ Successfully imported to: $gitea_url ⏫🔽" || { printf_yellow "⚠️ ⚠️  $(grep 'curl: ' "$GITADMIN_TEMP_FILE" | sed 's|curl:.*) ||g' | head -n1) ⚠️ ⚠️" && eCode=$((eCode + 1)); }
-      sleep 5
+      __sleep 5
     fi
   done
   printf '\n'
@@ -4955,7 +4957,7 @@ __github_create_repo() {
     if __github_is_org "$git_user"; then
       # Create under organization
       if __curl_github_orgs_create "$git_user" "$git_repo" "$git_describe" "$git_homepage" "$git_visibility"; then
-        sleep 5
+        __sleep 5
         if __api_repo_verify "$api_url" "$git_user" "$git_repo" &>/dev/null; then
           printf_green "$git_succes"
           exit_code=0
@@ -4970,7 +4972,7 @@ __github_create_repo() {
     else
       # Create under user (authenticated user)
       if __curl_github_user_create "$git_user" "$git_repo" "$git_describe" "$git_homepage" "$git_visibility"; then
-        sleep 5
+        __sleep 5
         if __api_repo_verify "$api_url" "$git_user" "$git_repo" &>/dev/null; then
           printf_green "$git_succes"
           exit_code=0
@@ -6007,7 +6009,7 @@ __clone_orgs() {
 # __main cloning function
 __main() {
   local i="" git_user="" git_repo="" git_base="" git_dir="" git_failed="" git_succes="" user_repo=""
-  sleep 1
+  __sleep 1
   git_user="$1"
   git_repo="${2:-$GITADMIN_DEFAULT_REPO_BASE}"
   git_base="${GITADMIN_NEW_PROJECT_DIR:-$GITADMIN_DEFAULT_PROJECT_DIR/github}"

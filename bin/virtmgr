@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -327,6 +327,8 @@ __exec_trap_exit() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __printf_reset() { printf_color "\r$1 " ${2:-1}; }
 __run_post() { eval "$@" >/dev/null 2>&1 || return 1; }
@@ -447,9 +449,9 @@ __ssh_viewer() {
   printf '\033[2J\033[H'
   while [ $tries -gt 0 ]; do
     __printf_reset "Attempting to connect to ${ip}..." 3
-    __start "$name" &>/dev/null && sleep 2 || sleep .5
+    __start "$name" &>/dev/null && __sleep 2 || __sleep .5
     [ -n "$ip" ] && break || tries=$((tries - 1))
-    sleep 1 && ip="$(__get_ip "$name")"
+    __sleep 1 && ip="$(__get_ip "$name")"
   done
   echo ''
   id_file="$(__get_id_file "$idFile" || __get_id_file "$ip")"
@@ -460,7 +462,7 @@ __ssh_viewer() {
       exit
     else
       printf_red "Failed to ping ${ip} launching local viewer"
-      sleep 3
+      __sleep 3
       __local_viewer "$name"
     fi
   else
@@ -598,7 +600,7 @@ __vm_new() {
       --input tablet --network $network,model=virtio \
       --boot ${boot} | tee -p "$VIRTMGR_LOG_DIR/virt-install.log" &>/dev/null &
     pid=$!
-    sleep 10
+    __sleep 10
     if grep -iqs 'virt-install: error:' "$VIRTMGR_LOG_DIR/virt-install.log"; then
       printf_exit "Failed to create vm"
     fi
@@ -610,7 +612,7 @@ __vm_new() {
       break
     fi
     printf '\rAttempting to create and start %s  ' "$name"
-    sleep 10
+    __sleep 10
     ((retries--))
     [ $retries -eq 0 ] && echo '' && printf_exit "Failed to create and start $name"
   done

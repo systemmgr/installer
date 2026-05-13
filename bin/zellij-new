@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602041608-git
+##@Version           :  202605121410-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602041608-git"
+VERSION="202605121410-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -352,6 +352,8 @@ __trap_exit() {
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 __zellij() { \zellij -L "$ZELLIJ_NEW_SOCKET_DIR/$ZELLIJ_NEW_SOCKET_FILE"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -475,7 +477,7 @@ __zellij_kill_all() {
         (cd "$session_path" && "$0" --dir "$session_path" --silent "$session_type" &>/dev/null &)
       fi
     done
-    sleep 2
+    __sleep 2
     printf_green "Sessions recreated - use 'zellij-new list' to see them"
   fi
 
