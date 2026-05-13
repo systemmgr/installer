@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605121410-git
+##@Version           :  202605122100-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605121410-git"
+VERSION="202605122100-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -287,7 +287,7 @@ __trap_exit() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__pid_tmp() { mktemp --dry-run "pid_${1:-XXXXXX}" 2>/dev/null || grep '^' || echo "pid_${!}}_${$}"; }
+__pid_tmp() { mktemp --dry-run "pid_${1:-XXXXXX}" 2>/dev/null || echo "pid_${BASHPID}_${$}"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_myssh() {
   trap 'touch $kill_file;__sleep 1;printf "\033[2J\033[H";printf_cyan "To relaunch run: $APPNAME $message"' SIGINT
@@ -297,13 +297,13 @@ __run_myssh() {
   local pid_file="$(__pid_tmp "${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
-      eval $run_cmd --kill "$kill_file"
+      eval "$run_cmd" --kill "$kill_file"
+      __sleep 5
     fi
   done
   exit $?
@@ -317,13 +317,13 @@ __run_shell() {
   local pid_file="$(__pid_tmp "${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
-      eval $run_cmd && $SHELL || break
+      eval "$run_cmd" && $SHELL || break
+      __sleep 5
     fi
   done
   ${SHELL:-bash}
@@ -338,13 +338,13 @@ __run_loop() {
   local pid_file="$(__pid_tmp "${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
-      eval $run_cmd
+      eval "$run_cmd"
+      __sleep 5
     fi
   done
   ${SHELL:-bash}
@@ -359,14 +359,14 @@ __run_wait() {
   local pid_file="$(__pid_tmp "${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
-      eval $run_cmd
+      eval "$run_cmd"
       wait
+      __sleep 5
     fi
   done
   ${SHELL:-bash}
@@ -381,13 +381,13 @@ __run_application() {
   local pid_file="$(__pid_tmp "${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
-      eval $run_cmd && eval $SHELL || break
+      eval "$run_cmd" && eval $SHELL || break
+      __sleep 5
     fi
   done
   ${SHELL:-bash}
@@ -403,13 +403,13 @@ __run_log() {
   local pid_file="$(__pid_tmp "pid_${pid_number}_XXXX")"
   local kill_file="$RUN_OPTIONS_TEMP_DIR/${pid_file}"
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -Rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval tail -f $run_cmd
+      __sleep 5
     fi
   done
   ${SHELL:-bash}
@@ -426,13 +426,13 @@ __cd() {
   [ -d "$run_cmd" ] || mkdir -p "$run_cmd"
   builtin cd "$run_cmd" || false
   while :; do
-    __sleep 5
     if [ -f "$kill_file" ]; then
       rm -rf "$kill_file"
       break
     else
       printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval ${SHELL:-bash}
+      __sleep 5
     fi
   done
   exit $?
@@ -648,7 +648,7 @@ export RUN_OPTIONS_CWD
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Check for required applications/Network check
 #requiresudo "$0" "$@" || exit 2     # exit 2 if errors
-cmd_exists --error --ask bash || exit 3 # exit 3 if not found
+__cmd_exists bash || exit 3 # exit 3 if not found
 #am_i_online --error || exit 4           # exit 4 if no internet
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # APP Variables overrides
@@ -719,7 +719,7 @@ while :; do
     shift 1
     RUN_OPTIONS_EXEC_ARGS="${1:-$RUN_OPTIONS_CWD}"
     RUN_OPTIONS_EXEC_MESSAGE="cd $RUN_OPTIONS_EXEC_ARGS"
-    [ -w "$RUN_OPTIONS_EXEC_ARGS" ] && mkdir -p "$RUN_OPTIONS_EXEC_ARGS"
+    [ -d "$RUN_OPTIONS_EXEC_ARGS" ] || mkdir -p "$RUN_OPTIONS_EXEC_ARGS"
     __cd "$RUN_OPTIONS_EXEC_ARGS"
     shift 1
     ;;
