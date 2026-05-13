@@ -166,7 +166,8 @@
       "Bash(rpm -q expat-devel)",
       "Bash(dpkg -l libexpat-dev)",
       "Bash(perl -MJSON::PP -e1)",
-      "Bash(perl -MText::CSV -e1)"
+      "Bash(perl -MText::CSV -e1)",
+      "Bash(systemmgr update *)"
     ],
     "deny": [
       "Bash(git commit:*)",
