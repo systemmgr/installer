@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131420-git
+##@Version           :  202605131430-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605131420-git"
+VERSION="202605131430-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1258,18 +1258,21 @@ __profile_manager() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Monitor connections
 __monitor_connections() {
-  printf_cyan "Monitoring active network connections..."
-  printf_yellow "Press Ctrl+C to stop\n"
-
   while true; do
     printf '\033[2J\033[H'
-    printf_cyan "=== Active Connections ==="
+    printf_cyan "=== Active Connections === (Ctrl+C to stop)"
     if __cmd_exists ss; then
       ss -tunap 2>/dev/null | grep ESTAB | head -20
     elif __cmd_exists netstat; then
       netstat -tunp 2>/dev/null | grep ESTABLISHED | head -20
     elif [[ "$(__detect_platform)" == "macos" ]]; then
       lsof -i -n -P | grep ESTABLISHED | head -20
+    fi
+    printf_cyan "=== LAN Devices ==="
+    if __cmd_exists ip; then
+      ip neigh show 2>/dev/null | grep -v FAILED | head -20
+    elif __cmd_exists arp; then
+      arp -n 2>/dev/null | grep -v incomplete | head -20
     fi
     __sleep 2
   done
