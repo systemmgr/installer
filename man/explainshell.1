@@ -38,7 +38,7 @@ Display all available command-line options and exit
 .BR \-\-debug
 Enable debug mode with verbose output and tracing
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-completions " " \fI\,TYPE\/\fR
@@ -201,7 +201,7 @@ Explain docker run with interactive terminal
 .B explainshell --config
 Generate configuration file at ~/.config/myscripts/explainshell/settings.conf
 .TP
-.B explainshell --raw -- curl -o
+.B explainshell --no-color -- curl -o
 Explain curl -o without colored output
 .SH USE CASES
 How to use explainshell in different scenarios:
@@ -595,7 +595,7 @@ URL encoding handles special characters automatically
 .IP \(bu 2
 HTML is stripped from responses for plain text display
 .IP \(bu 2
-Colorized output can be disabled with --raw option
+Colorized output can be disabled with --no-color option
 .IP \(bu 2
 API endpoint is configurable for self-hosted instances
 .SH TIPS
@@ -727,7 +727,7 @@ Check sed installed: which sed
 .IP \(bu 2
 Verify API response: curl -s https://explainshell.com/explain/curl
 .IP \(bu 2
-Try --raw mode: explainshell --raw -- curl
+Try --no-color mode: explainshell --no-color -- curl
 .IP \(bu 2
 Update curl: sudo apt update && sudo apt upgrade curl
 .RE

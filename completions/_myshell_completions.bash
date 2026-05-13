@@ -26,7 +26,7 @@ _myshell() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --add --del --list --set"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --add --del --list --set"
   local SHORTOPTS=""
   local ARRAY="$(for line in $(grep -v "#" "/etc/shells" | sort -u); do basename -- "$line" 2>/dev/null; done)"
 

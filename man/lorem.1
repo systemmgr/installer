@@ -83,7 +83,7 @@ Display all available command-line options and exit
 .BR \-\-debug
 Enable debug mode with verbose output and tracing
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-completions " " \fI\,TYPE\fR
@@ -724,7 +724,7 @@ Verify API returns data: curl API_URL/paragraphs/1
 .IP \(bu 2
 Check temp directory permissions: ls -la ~/.local/tmp/system_scripts/lorem/
 .IP \(bu 2
-Try with --raw for plain output: lorem --raw paragraphs 1
+Try with --no-color for plain output: lorem --no-color paragraphs 1
 .RE
 .SS File Save Fails
 .RS

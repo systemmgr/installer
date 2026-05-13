@@ -26,7 +26,7 @@ _emojis() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir -l --list"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir -l --list"
   local SHORTOPTS=""
   local ARRAY="update dmenu search print list"
   local LIST="$(awk '{print $1}' /home/jason/Projects/github/casjay-dotfiles/scripts/helpers/emojis/emojis)"

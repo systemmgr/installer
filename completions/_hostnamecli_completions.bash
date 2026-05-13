@@ -26,7 +26,7 @@ _hostnamecli() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --remove --full --domain --short"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --remove --full --domain --short"
   local SHORTOPTS="-z -r -f -s -d -I -S"
   local ARRAY="$LONGOPTS $SHORTOPTS"
 

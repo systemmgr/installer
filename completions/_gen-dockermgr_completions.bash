@@ -18,7 +18,7 @@ _gen-dockermgr() {
   local cur="${COMP_WORDS[$COMP_CWORD]}"
   local prev="${COMP_WORDS[$COMP_CWORD - 1]}"
   local SHORTOPTS=""
-  local LONGOPTS="--help --config --version --options --debug --raw --silent "
+  local LONGOPTS="--help --config --version --options --debug --no-color --silent "
   local LONGOPTS+="--nogit --nopush --noask --dir"
   local ARRAY="script"
 
@@ -36,7 +36,7 @@ _gen-dockermgr() {
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       return 0
       ;;
-    --config | --help | --version | --options | --raw)
+    --config | --help | --version | --options | --no-color)
       return 0
       ;;
     --dir)

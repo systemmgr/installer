@@ -37,7 +37,7 @@ _trash() {
   local SHOW_COMP_OPTS="default"
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --orig"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --orig"
   local SHORTOPTS=""
   local prefix=trash
   local trashdir="${TRASH_DIR:-$HOME/.local/share/Trash/files}"

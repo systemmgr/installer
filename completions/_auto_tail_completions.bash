@@ -50,7 +50,7 @@ _auto_tail_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --lines --options --raw --version --silent --force --no- "
+  LONGOPTS="--completions --config --debug --dir --help --lines --options --no-color --version --silent --force --no- "
   LONGOPTS+=""
   #####################################################################
   #NOOPTS="--no-* "
@@ -80,7 +80,7 @@ _auto_tail_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

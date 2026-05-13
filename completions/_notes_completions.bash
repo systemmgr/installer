@@ -27,7 +27,7 @@ _notes() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --import --show --server"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --import --show --server"
   local SHORTOPTS=""
   local OPEN="$(find $NOTES_DIR/*/* -type f -iname "*.txt" -o -iname "*.md" -not -path "$NOTES_DIR/.git/*" -not -path "$NOTES_DIR/archive/*" 2>/dev/null | sed 's#'$NOTES_DIR/'##g')"
   local EDIT="all prev cur"

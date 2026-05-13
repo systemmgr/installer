@@ -36,7 +36,7 @@ _thememgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --all"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --all"
   local SHORTOPTS=""
   local ARRAY="makecache list search available remove update install cron version download "
   local LIST="Arc-Pink-Dark"

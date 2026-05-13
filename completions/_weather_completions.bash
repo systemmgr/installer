@@ -36,7 +36,7 @@ _weather() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --zipcode --citystate --airport --moon --simple --flags --default --local"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --zipcode --citystate --airport --moon --simple --flags --default --local"
   local SHORTOPTS=""
   local ARRAY="info v1 v2 v3 city image moon simple script :help"
 

@@ -26,7 +26,7 @@ _latest-releases() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --filename --binname --type --gitlab --gitea --system"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --filename --binname --type --gitlab --gitea --system"
   local SHORTOPTS="-f -t -b "
   local ARRAY="add remove install update uninstall gitea gitlab info list search token "
   local SEARCH_OPTS="api repo release"

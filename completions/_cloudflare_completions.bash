@@ -28,7 +28,7 @@ _cloudflare() {
   local FILEDIR=""
   local OPTS=""
   local SHORTOPTS=""
-  local LONGOPTS="--completions --config --debug --help --options --raw --version "
+  local LONGOPTS="--completions --config --debug --help --options --no-color --version "
   local LONGOPTS+="--ip --zone --proxy --record --api --key --delete-all --id --bulk"
   local ARRAY="create update delete list verify tunnel zones cron"
 

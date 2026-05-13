@@ -35,7 +35,7 @@ _lxcmgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS=""
   local ARRAY="init check images create stop start restart delete exec search info list run panel"
 

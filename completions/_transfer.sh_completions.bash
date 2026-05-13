@@ -27,7 +27,7 @@ _transfer.sh() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --help --version --config --silent --dir "
+  local LONGOPTS="--completions --debug --no-color --options --help --version --config --silent --dir "
   local SHORTOPTS=""
   local ARRAY="scan virustotal backup encrypt"
 

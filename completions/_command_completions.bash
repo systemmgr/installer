@@ -28,7 +28,7 @@ _command() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent "
   local SHORTOPTS="-p -s -v -V"
   local ARRAY=""
 

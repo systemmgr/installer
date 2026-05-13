@@ -26,7 +26,7 @@ _myssh() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --term"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --term"
   local SHORTOPTS=""
   local ARRAY=""
   local configfile

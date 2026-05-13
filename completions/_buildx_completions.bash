@@ -29,7 +29,7 @@ _buildx_completion() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --cleanup --no-pull "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --cleanup --no-pull "
   local LONGOPTS+="--repo --no-registry --no-repo --platform --tag --all --build --url --script --init --user --org --image --registry --gen-script --cron --files "
   local SHORTOPTS=""
   local ARRAY="all build run init status version api cron automated "
@@ -48,7 +48,7 @@ _buildx_completion() {
     COMPREPLY=($(compgen -W '${SHORTOPTS:---}' -- ${cur})) && compopt -o nospace
   else
     case "${prev:-${COMP_WORDS[1]}}" in
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

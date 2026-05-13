@@ -50,7 +50,7 @@ _acme-cli_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --no- --yes- "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --no- --yes- "
   LONGOPTS+="--default --init --domains --primary --add --folder --dev --prod --acme --create --key --server"
   #####################################################################
   OPTS_NO="--no-test --no-subs"
@@ -81,7 +81,7 @@ _acme-cli_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

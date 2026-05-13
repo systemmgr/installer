@@ -26,7 +26,7 @@ _devenvmgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --start --list --all --template"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --start --list --all --template"
   local SHORTOPTS="$LONGOPTS"
   local ARRAY="available deno django download editorconfig eslint express html hugo import jekyll "
   local ARRAY+="laravel mevn node package perl php prettier python react ruby shellcheck static tsconfig "

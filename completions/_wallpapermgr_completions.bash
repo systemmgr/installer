@@ -36,7 +36,7 @@ _wallpapermgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --force --all"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --force --all"
   local SHORTOPTS=""
   local ARRAY="list search available remove version update install cron"
   local LIST="Abstract Anime-Games-TV-Movies Architecture Cars casjay Characters "

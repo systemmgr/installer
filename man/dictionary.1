@@ -64,7 +64,7 @@ Display all available command-line options and commands
 .BR \-\-debug
 Enable debug mode with verbose output, command tracing (set -x), and error visibility
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display (useful for piping or logging)
 .TP
 .BR \-\-silent
@@ -306,7 +306,7 @@ To force terminal output even in GUI environments:
 .IP \(bu 2
 Set CONSOLE_APP=true environment variable
 .IP \(bu 2
-Use --raw option to disable colors
+Use --no-color option to disable colors
 .RE
 .SH SEARCH HISTORY
 Dictionary automatically tracks search history for easy reference:
@@ -395,7 +395,7 @@ Search history limited to last 20 entries by default
 .IP \(bu 2
 Word lists stored as plain text files for portability
 .IP \(bu 2
-Supports colorized terminal output with --raw to disable
+Supports colorized terminal output with --no-color to disable
 .IP \(bu 2
 JSON parsing done with jq for reliability
 .IP \(bu 2

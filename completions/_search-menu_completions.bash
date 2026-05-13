@@ -42,7 +42,7 @@ _search-menu_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --providers"
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --providers"
   #####################################################################
   ARRAY="development engines media news os all default packages tech security list search"
   CATEGORIES="development engines media news os packages tech security"
@@ -75,7 +75,7 @@ _search-menu_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

@@ -26,7 +26,7 @@ _gen-readme() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS="-d"
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --copy --name --description --registry --user --repo"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --copy --name --description --registry --user --repo"
   local SHORTOPTS=""
   local ARRAY="list search download custom all $SEARCHCMD"
 

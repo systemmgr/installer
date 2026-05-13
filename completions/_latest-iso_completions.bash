@@ -27,7 +27,7 @@ _latest-iso() {
   local FILEDIR=""
   local OPTS=""
   local SHORTOPTS="-C"
-  local LONGOPTS="--raw --debug --completions --options --version --help --config --silent --dir --force --all --ask --filename --arch --release --name --test"
+  local LONGOPTS="--no-color --debug --completions --options --version --help --config --silent --dir --force --all --ask --filename --arch --release --name --test"
   local SUBCMDS="all gui iso server"
   local ARRAY="aeryn alma alpine arch archcraft bazzite blackarch cachy centos chimera clonezilla debian debian-server endeavour fedora flatcar "
   local ARRAY+="freenas garuda gentoo gparted heads hirens kali mac macos manjaro nixos nobara opensuse openvz osx parrot peppermint pfsense "

@@ -28,7 +28,7 @@ _sudoers() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local DEFAULTARRAY=""
   local DEFAULTOPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS="-h -v"
   local OPTS="$DEFAULTOPTS"
   local ARRAY="remove pass remuser adduser nopass insults status users"

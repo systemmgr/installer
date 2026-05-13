@@ -35,7 +35,7 @@ _incusmgr() {
   local FILEDIR=""
   local OPTS=""
   local SHORTOPTS="-f"
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --force"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --force"
   local ARRAY="init status version list ls info launch run start stop restart delete rm exec enter shell rename snapshot restore "
   local ARRAY+="storage network profile image remote prune "
 

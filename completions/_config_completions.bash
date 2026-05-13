@@ -30,7 +30,7 @@ _config() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --system --name --custom --root"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --system --name --custom --root"
   local SHORTOPTS=""
   local ARRAY="init info ignore local log l status s delete restore reset remove rm add stow commit checkout remote pull push set rename clone bare backup"
 

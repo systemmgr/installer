@@ -36,7 +36,7 @@ _ss_screenkey() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --no-systray -t -p --persist -s -g --key-mode --bak-mode --mods-mode --mods-only --show-settings "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --no-systray -t -p --persist -s -g --key-mode --bak-mode --mods-mode --mods-only --show-settings "
   local SHORTOPTS=""
   local ARRAY=""
 

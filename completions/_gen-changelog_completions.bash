@@ -45,7 +45,7 @@ _gen-changelog_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --force "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --force "
   LONGOPTS+="--message --files --changelog --icon --prepend --commit --create --amend "
   LONGOPTS+="--init --major --minor --patch --version-bump --interactive --format "
   LONGOPTS+="--install-hooks --stats --statistics --release --since-tag --between "
@@ -77,7 +77,7 @@ _gen-changelog_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

@@ -32,7 +32,7 @@ _screen-new_completion() {
   # Match ARRAY from script: a,attach,ls,list,kill,d,detach,edit
   local subcmds="a attach ls list kill d detach edit"
   # Match LONGOPTS from script: completions:,config,reset,debug,dir:,help,name:,options,no-color,version,silent,force
-  local longopts="--completions --config --reset --debug --dir --help --name --options --raw --version --silent --force"
+  local longopts="--completions --config --reset --debug --dir --help --name --options --no-color --version --silent --force"
   # Helper: get active sn-* session names without the sn- prefix
   __sn_sessions() { screen -ls 2>/dev/null | grep '\.sn-' | sed 's/.*\.sn-//;s/[[:space:]].*//'; }
   # Options always available
@@ -62,7 +62,7 @@ _screen-new_completion() {
     fi
     return 0
     ;;
-  --debug | --raw | --silent | --force)
+  --debug | --no-color | --silent | --force)
     # After flags, complete with subcommands or sessions
     local sessions="$(__sn_sessions)"
     COMPREPLY=($(compgen -W "${subcmds} ${sessions}" -- "${cur}"))

@@ -26,7 +26,7 @@ _gitignore() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --options --config --version --help --dir --automated --debug --raw --silent"
+  local LONGOPTS="--completions --options --config --version --help --dir --automated --debug --no-color --silent"
   local SHORTOPTS="-f"
   local ARRAY="list search console save add update dirignore default nopush ignorefailed "
   local ARRAY+="1c 1c-bitrix a-frame actionscript ada adobe advancedinstaller adventuregamestudio agda al alteraquartusii altium amplify android androidstudio angular "

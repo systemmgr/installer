@@ -40,7 +40,7 @@ Display all available command-line options
 .BR \-\-debug
 Enable debug mode with verbose output
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-silent
@@ -256,7 +256,7 @@ Display all cities named Springfield worldwide
 .B get_city_id "Los Angeles" | jq -r '.id'
 Extract city ID using jq for scripting
 .TP
-.B get_city_id Berlin --raw > berlin.json
+.B get_city_id Berlin --no-color > berlin.json
 Save results without color formatting
 .TP
 .B get_city_id Moscow --debug
@@ -388,7 +388,7 @@ get_city_id Tokyo | jq -r '.[0]' 2>/dev/null || get_city_id Tokyo | head -1
 .EX
 # Process multiple cities
 while IFS= read -r city; do
-  get_city_id "$city" --raw >> city_ids.json
+  get_city_id "$city" --no-color >> city_ids.json
 done < cities.txt
 
 # Extract all IDs to file

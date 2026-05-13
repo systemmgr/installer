@@ -34,7 +34,7 @@ _findmydevices_completion() {
   #####################################################################
   local SHORTOPTS=""
   #####################################################################
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   local LONGOPTS+=",--custom --timeout --network --netmask"
   #####################################################################
   local ARRAY="10. 192.168. 172.16"
@@ -63,7 +63,7 @@ _findmydevices_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

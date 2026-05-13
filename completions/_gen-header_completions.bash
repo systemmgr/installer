@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605132100-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  WTFPL
@@ -28,11 +28,11 @@ _gen-header() {
   local FILEDIR=""
   local OPTS=""
   local SHORTOPTS="a -e -h -d -t -c -o -r -i -f -n -u -l -p -k -s"
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
-  local LONGOPTS+=",--all --no --help --user --raw --desc --todo --copywrite --other --res "
+  local LONGOPTS="--completions --debug --no-color --options --config --reset-config --version --help --silent --dir "
+  local LONGOPTS+=",--all --no --yes --force --help --user --no-color --template --desc --todo --changelog --copywrite --other --res "
   local LONGOPTS+=",--type --functions --name --prev --replace --keep --pause --system "
-  local LONGOPTS+=",--silent --license --skip "
-  local HEADER_OPTS="--no --help --user --raw --desc --todo --copywrite --other --res --type "
+  local LONGOPTS+=",--silent --license --skip --clip --profile --folders --sudo --basic "
+  local HEADER_OPTS="--no --yes --help --user --no-color --template --desc --todo --changelog --copywrite --other --res --type "
   local HEADER_OPTS+="--functions --name --prev --replace --keep --pause --system "
   local ARRAY="folders functions replace head version env"
 

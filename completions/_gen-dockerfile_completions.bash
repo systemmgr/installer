@@ -50,7 +50,7 @@ _gen-dockerfile_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --update "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --update "
   LONGOPTS+="--dockerfile --startup --nogit --template --org --user --repo --pkmgr --distro-name --registry "
   LONGOPTS+="--distro-version --add-tags --x11 --init --apache --nginx --mysql --postgres --php --application "
   LONGOPTS+="--alpine --almalinux --archlinux --debian --ubuntu "
@@ -82,7 +82,7 @@ _gen-dockerfile_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

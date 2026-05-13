@@ -26,7 +26,7 @@ _gen-network() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS=""
   local ARRAY="mac port ipv4 ipv6 all"
 
@@ -71,8 +71,8 @@ _gen-network() {
       return
       ;;
 
-    --raw)
-      local prev="--raw"
+    --no-color)
+      local prev="--no-color"
       COMPREPLY=($(compgen -W '${ARRAY}' -- "${cur}"))
       ;;
 

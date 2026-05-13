@@ -50,7 +50,7 @@ _setupmgr_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --raw --version --silent --force --no- "
+  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --silent --force --no- "
   LONGOPTS+="--all "
   #####################################################################
   ARRAY="act aichat aider asdf atuin bat bob broot bun caddy claude coder codex copilot cortex ctop delta deno devbox direnv distrobox dive "
@@ -88,7 +88,7 @@ _setupmgr_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

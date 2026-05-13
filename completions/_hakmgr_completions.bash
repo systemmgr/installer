@@ -26,7 +26,7 @@ _hakmgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --force --list --all"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --force --list --all"
   local SHORTOPTS=""
   local ARRAY="list search available update install cron version remove clone download"
   local LIST="airgeddon amass androguard apktool arjun assetfinder autopsy beef bettercap bloodhound class-dump commix covenant dalfox dehashed "

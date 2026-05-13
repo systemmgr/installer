@@ -36,7 +36,7 @@ _urlcheck() {
   local SHOW_COMP_OPTS="nospace"
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --url"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --url"
   local SHORTOPTS=""
   local ARRAY="options config version help url:"
 

@@ -50,7 +50,7 @@ _composemgr_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --raw --version --silent --force --no- --yes- "
+  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --silent --force --no- --yes- "
   LONGOPTS+="--project --env"
   #####################################################################
   ARRAY="init install remove up down ps logs new edit show env get generate backup network cat nginx repo"
@@ -88,7 +88,7 @@ _composemgr_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

@@ -50,7 +50,7 @@ _gen-ssl_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version "
   LONGOPTS+="--silent --force --copy --wildcards --install --domains --dns --ca --primary --password "
   #####################################################################
   ARRAY="info install setup generate domains new revoke dh letsencrypt"
@@ -79,7 +79,7 @@ _gen-ssl_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

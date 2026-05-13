@@ -25,7 +25,7 @@ _tmux-new() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --kill --name --socket"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --kill --name --socket"
   local SHORTOPTS=""
   local ARRAY="kill clean list attach switch rename status show clone nested single shell server web docker dev go rust python devops monitoring database rpm node bun deno build ssh productivity test default edit create update save restore boot cleanup"
   local LAUNCH="nested single shell server web docker dev go rust python devops monitoring database rpm node bun deno build ssh productivity test default"

@@ -44,7 +44,7 @@ Display all available command-line options
 .BR \-\-debug
 Enable debug mode with verbose nmap output
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-silent
@@ -172,7 +172,7 @@ Scan with verbose nmap output and debugging information
 .B findmypi --silent
 Scan local network without desktop notifications
 .TP
-.B findmypi --raw 192.168.1.0/24
+.B findmypi --no-color 192.168.1.0/24
 Scan with plain text output (no colors)
 .SH OUTPUT FILES
 findmypi saves results to organized files:
@@ -447,7 +447,7 @@ Install ipcalc for enhanced network info: sudo apt install ipcalc
 .IP \(bu 2
 Install unbuffer for better output: sudo apt install expect
 .IP \(bu 2
-Use --raw flag to disable colorization
+Use --no-color flag to disable colorization
 .IP \(bu 2
 Check terminal supports ANSI colors
 .RE

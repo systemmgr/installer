@@ -42,7 +42,7 @@ _run_options_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   LONGOPTS+=""
   #####################################################################
   ARRAY="cd loop log server editor browser files"
@@ -70,7 +70,7 @@ _run_options_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

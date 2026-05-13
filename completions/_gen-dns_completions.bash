@@ -42,7 +42,7 @@ _gen-dns_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --copy "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --copy "
   LONGOPTS+="--domain --hostip4 --hostip6 --dnsip4 --dnsip6 --force --forwarders --import --template --provider --transfer"
   #####################################################################
   ARRAY="edit update help"
@@ -70,7 +70,7 @@ _gen-dns_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

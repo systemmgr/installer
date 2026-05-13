@@ -50,7 +50,7 @@ _web-notify_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version "
   LONGOPTS+="--silent --force --discord-token --slack-token --telegram-token --telegram-channel"
   #####################################################################
   ARRAY="discord slack telegram"
@@ -78,7 +78,7 @@ _web-notify_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

@@ -42,7 +42,7 @@ _config-editor_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   LONGOPTS+=""
   #####################################################################
   ARRAY=""
@@ -70,7 +70,7 @@ _config-editor_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

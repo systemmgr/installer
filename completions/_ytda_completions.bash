@@ -50,7 +50,7 @@ _ytda_completion() {
   SHORTOPTS="yta nightcore aac flac m4a mp3 opus vorbis wav ytda"
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   LONGOPTS+=""
   #####################################################################
   ARRAY="playlist yta ytda nightcore aac flac m4a mp3 opus vorbis wav"
@@ -78,7 +78,7 @@ _ytda_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

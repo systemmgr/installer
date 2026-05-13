@@ -26,7 +26,7 @@ _readme-2-post() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --script --file"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --script --file"
   local SHORTOPTS=""
   local ARRAY="show__filedir"
 

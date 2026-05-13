@@ -41,7 +41,7 @@ Show all available options
 .B --debug
 Enable debugging output with trace
 .TP
-.B --raw
+.B --no-color
 Remove all formatting and colors from output
 .TP
 .B --silent
@@ -155,7 +155,7 @@ Numeric addresses
 .SH NOTES
 netstatg requires sudo privileges to display process information for all connections. If not running as root, you will be prompted for sudo password.
 
-The script provides colored output by default. Use --raw flag to disable colors for scripting or piping to other commands.
+The script provides colored output by default. Use --no-color flag to disable colors for scripting or piping to other commands.
 
 .SH REQUIREMENTS
 .TP

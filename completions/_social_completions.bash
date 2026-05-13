@@ -30,7 +30,7 @@ _social() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS=""
   local ARRAY=""
 

@@ -50,7 +50,7 @@ _ai_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --raw --version --silent --force --no- --yes-"
+  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --silent --force --no- --yes-"
   LONGOPTS+=" --model --provider --list --check"
   #####################################################################
   # Subcommands
@@ -104,7 +104,7 @@ _ai_completion() {
       COMPREPLY=($(compgen -W '' -- ${cur}))
       return 0
       ;;
-    --debug | --raw)
+    --debug | --no-color)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

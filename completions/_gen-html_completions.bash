@@ -26,7 +26,7 @@ _gen-html() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   local LONGOPTS+=",--copy --body --title"
   local SHORTOPTS=""
   local ARRAY="list download custom redirect site"

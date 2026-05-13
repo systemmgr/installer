@@ -26,7 +26,7 @@ _gen-caddy() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --domain --port --fpm --caddyfile --no-php"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --domain --port --fpm --caddyfile --no-php"
   local SHORTOPTS=""
   local ARRAY="start stop reload restart status install update fixphp installphp edit service uninstall delete-service config html backup restore about help version download reverse check"
   local SERVER_COMMANDS="start stop reload restart status"

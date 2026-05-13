@@ -35,7 +35,7 @@ _venv() {
   local SHOW_COMP_OPTS=""
   local FILEDIR="show__filedir"
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS=""
   local ARRAY=""
 

@@ -26,7 +26,7 @@ _todo() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS="$(echo {0..9} {a..z})"
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   local SHORTOPTS="-p"
   local ARRAY="archive completed import list search edit update"
 

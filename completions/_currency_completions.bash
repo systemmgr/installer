@@ -26,7 +26,7 @@ _currency() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --help --options --raw --version --silent --dir"
+  local LONGOPTS="--completions --config --debug --help --options --no-color --version --silent --dir"
   local SHORTOPTS=""
   local ARRAY="convert list crypto exchange search"
 

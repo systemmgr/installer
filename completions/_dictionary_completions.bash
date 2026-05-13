@@ -25,7 +25,7 @@ _dictionary() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --options --config --version --help --dir --debug --raw --silent"
+  local LONGOPTS="--completions --options --config --version --help --dir --debug --no-color --silent"
   local SHORTOPTS=""
   local ARRAY="phonetic definition example synonym antonym origin history save-word save list-words words random"
   local WORD_LISTS="$(ls $HOME/.cache/dictionary/wordlist_*.txt 2>/dev/null | sed 's|.*wordlist_||; s|\.txt$||' || echo 'favorites')"
@@ -74,7 +74,7 @@ _dictionary() {
       _filedir
       return
       ;;
-    --options|--config|--help|--version|--debug|--raw|--silent)
+    --options|--config|--help|--version|--debug|--no-color|--silent)
       COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
     *)

@@ -25,7 +25,7 @@ _send_notify() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --options --config --version --help --dir --raw --debug --silent"
+  local LONGOPTS="--completions --options --config --version --help --dir --no-color --debug --silent"
   local SHORTOPTS=""
   local ARRAY="show__none"
 

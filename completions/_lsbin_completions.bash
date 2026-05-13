@@ -32,7 +32,7 @@ _lsbin_completion() {
   #####################################################################
   local SHORTOPTS=""
   #####################################################################
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   #####################################################################
   local ARRAY="l. ls la ll lla dir"
   #####################################################################
@@ -59,7 +59,7 @@ _lsbin_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

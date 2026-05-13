@@ -26,7 +26,7 @@ _killzombies() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --cron --admin"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --cron --admin"
   local SHORTOPTS=""
   local ARRAY=""
 

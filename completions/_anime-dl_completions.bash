@@ -28,7 +28,7 @@ _anime-dl_completion() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --update "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --update "
   local SHORTOPTS="-v -q -s -f -a -d -p -c -r "
   local ARRAY="${LONGOPTS} ${SHORTOPTS}"
 
@@ -45,7 +45,7 @@ _anime-dl_completion() {
     COMPREPLY=($(compgen -W '${SHORTOPTS}' -- ${cur}))
   else
     case "${COMP_WORDS[1]:-$prev}" in
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY}' -- ${cur}))
       return 0
       ;;

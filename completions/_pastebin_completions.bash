@@ -45,7 +45,7 @@ _pastebin_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   LONGOPTS+=",--title --name --private --language --expire --reply --apikey "
   #####################################################################
   ARRAY="nullbyte iotek catbox pastebin microbin lenpaste stikked private default termbin"
@@ -73,7 +73,7 @@ _pastebin_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

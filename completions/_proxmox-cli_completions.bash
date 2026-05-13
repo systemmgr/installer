@@ -42,7 +42,7 @@ _proxmox-cli_completion() {
   SHORTOPTS="-u -p -m"
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   LONGOPTS+="--force --machine --node --ssh --password --user"
   #####################################################################
   ARRAY="nodes ssh reset web config status power agent check server iso lxc vm"
@@ -72,7 +72,7 @@ _proxmox-cli_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

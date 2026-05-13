@@ -27,7 +27,7 @@ _scratchpad() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir"
   local SHORTOPTS=""
   local ARRAY="list open new git remove"
   local OPEN="$(find $SCRATCHPAD_DIR/*/* -not -path "$SCRATCHPAD_DIR/.git/*" -type f 2>/dev/null | sed 's#'$SCRATCHPAD_DIR/'##g' || return)"

@@ -50,7 +50,7 @@ _gen-traefik_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --raw --version --silent --force --template --ssl"
+  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --silent --force --template --ssl"
   LONGOPTS+=""
   #####################################################################
   ARRAY="list"
@@ -93,7 +93,7 @@ _gen-traefik_completion() {
       COMPREPLY=($(compgen -W '' -- ${cur}))
       return 0
       ;;
-    --debug | --raw)
+    --debug | --no-color)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

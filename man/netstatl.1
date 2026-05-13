@@ -40,7 +40,7 @@ Show all available options
 .B --debug
 Enable debugging output with trace
 .TP
-.B --raw
+.B --no-color
 Remove all formatting and colors from output
 .TP
 .B --silent
@@ -153,7 +153,7 @@ Numeric addresses
 .SH NOTES
 netstatl requires sudo privileges to display process information for all connections. The script will automatically request sudo access when needed.
 
-The script provides colored output by default to highlight matching patterns. Use --raw flag to disable colors for scripting purposes.
+The script provides colored output by default to highlight matching patterns. Use --no-color flag to disable colors for scripting purposes.
 
 The "port" subcommand extracts only port numbers from the output, useful for scripting and automation.
 

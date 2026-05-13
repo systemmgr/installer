@@ -26,7 +26,7 @@ _myip() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --options --config --version --help --silent --dir --raw"
+  local LONGOPTS="--completions --debug --options --config --version --help --silent --dir --no-color"
   local SHORTOPTS=""
   local ARRAY="local public info 4 6"
 

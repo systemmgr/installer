@@ -60,7 +60,7 @@ Display all available command-line options
 .BR \-\-debug
 Enable debug mode with verbose output
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-silent
@@ -283,7 +283,7 @@ Search past week for major Pacific earthquakes
 .B earthquakes month 4 search Japan
 Search past month for 4.5+ earthquakes in Japan
 .TP
-.B earthquakes --raw | less
+.B earthquakes --no-color | less
 View earthquake data as plain text
 .TP
 .B CONSOLE_APP=true earthquakes
@@ -419,7 +419,7 @@ Data sourced directly from USGS without caching
 .RS
 .EX
 # Watch for new earthquakes
-watch -n 300 earthquakes --raw
+watch -n 300 earthquakes --no-color
 
 # Monitor specific region
 earthquakes day search California | less
@@ -435,10 +435,10 @@ earthquakes week major
 CONSOLE_APP=true earthquakes
 
 # Disable colors
-earthquakes --raw
+earthquakes --no-color
 
 # Pipe to text processor
-earthquakes --raw | grep -i tsunami
+earthquakes --no-color | grep -i tsunami
 .EE
 .RE
 .SS Custom Window Size

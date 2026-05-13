@@ -25,7 +25,7 @@ _gen-links() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local SHOW_COMP_OPTS=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --force --lookup"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --force --lookup"
   local SHORTOPTS=""
   local ARRAY="watch bookmark"
   local COMMANDS="watch bookmark"

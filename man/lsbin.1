@@ -64,7 +64,7 @@ Display all available command-line options and exit
 .BR \-\-debug
 Enable debug mode with verbose output and tracing
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-completions " " \fI\,TYPE\fR
@@ -246,8 +246,8 @@ Default terminal color
 .SS Disable Colors
 .RS
 .EX
-# Use --raw to disable color
-lsbin --raw ls
+# Use --no-color to disable color
+lsbin --no-color ls
 
 # Or redirect output (automatic)
 lsbin ls > file.txt  # No colors in file

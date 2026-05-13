@@ -42,7 +42,7 @@ _cdd_completion() {
   SHORTOPTS="-c -v -h -m -r -l -s -a -d"
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --debug --dir --help --options --raw "
+  LONGOPTS="--completions --config --debug --dir --help --options --no-color "
   LONGOPTS+=",--version --silent --modify --remove --list --shell --add --delete --root --cd"
   #####################################################################
   ARRAY="$(___ls "${CDD_OPTIONS_PROJECT_DIR:-$HOME/.local/share/cdd/projects}")"
@@ -70,7 +70,7 @@ _cdd_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --config | --debug | --help | --options | --raw | --version)
+    --config | --debug | --help | --options | --no-color | --version)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

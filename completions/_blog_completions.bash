@@ -28,7 +28,7 @@ _blog_completion() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --file "
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --file "
   local SHORTOPTS="-f"
   local ARRAY="config copy new edit page post"
 
@@ -45,7 +45,7 @@ _blog_completion() {
     COMPREPLY=($(compgen -W '${SHORTOPTS:---}' -- ${cur})) && compopt -o nospace
   else
     case "${COMP_WORDS[1]:-$prev}" in
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

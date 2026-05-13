@@ -29,7 +29,7 @@ _gitadmin() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   local LONGOPTS+="--user --org --single --nolicense --noreadme --automated --cd --desc --site --delete "
   local LONGOPTS+="--nopush --message --type --all --visible "
   local LONGOPTS+="--github --gitlab --gitea --platform --private --public --homepage --description "

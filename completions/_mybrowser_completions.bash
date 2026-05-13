@@ -26,7 +26,7 @@ _mybrowser() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --term --private --tor --i2p --menu"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --term --private --tor --i2p --menu"
   local SHORTOPTS=""
   local ARRAY=". localhost $HOSTNAME http"
 

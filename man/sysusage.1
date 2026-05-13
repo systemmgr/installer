@@ -38,7 +38,7 @@ Show all available options
 .B --debug
 Enable debugging output
 .TP
-.B --raw
+.B --no-color
 Remove formatting from output for parsing
 .TP
 .B --silent
@@ -58,7 +58,7 @@ Run in cron mode (typically scheduled via crontab)
 .B sysusage --motd
 Output formatted for MOTD display
 .TP
-.B sysusage --raw
+.B sysusage --no-color
 Output raw statistics without formatting
 
 .SH MONITORED RESOURCES
@@ -129,7 +129,7 @@ The --motd option formats output suitable for display when users log in.
 
 Cron mode can be scheduled to run at regular intervals for monitoring and alerting.
 
-Use --raw for parsing output in other scripts or monitoring tools.
+Use --no-color for parsing output in other scripts or monitoring tools.
 
 .SH REQUIREMENTS
 .TP

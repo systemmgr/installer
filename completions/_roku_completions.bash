@@ -26,7 +26,7 @@ _roku() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --device"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --device"
   local SHORTOPTS=""
   local ARRAY="power launch key play stop pause toggle state command"
 

@@ -26,7 +26,7 @@ _randomwallpaper() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --help --term --rebuild"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --help --term --rebuild"
   local SHORTOPTS=""
   local ARRAY="enable disable new update bg"
   local BGOPTS="status start stop restart new"

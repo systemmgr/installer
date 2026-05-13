@@ -1,4 +1,4 @@
-.TH GEN-HEADER "1" "December 2025" "gen-header 202602020740-git" "User Commands"
+.TH GEN-HEADER "1" "May 2026" "gen-header 202605132100-git" "User Commands"
 .SH NAME
 gen-header \- Bash script header generator with metadata and boilerplate code
 .SH SYNOPSIS
@@ -44,8 +44,11 @@ Display all available command-line options
 .BR \\-\\-debug
 Enable debug mode with verbose output
 .TP
-.BR \\-\\-raw
-Disable colorized output for plain text display
+.BR \\-\\-no-color
+Disable ANSI color output (also honored via NO_COLOR env var per no-color.org)
+.TP
+.BR \\-\\-template
+Print the raw script template to stdout without substitution
 .TP
 .BR \\-\\-copy
 Copy template files to working directory
@@ -445,7 +448,7 @@ Default script filename
 .B GEN_HEADER_SED_CMD
 Sed command for text replacement (default: sed)
 .TP
-.B GEN_HEADER_NOTIFY_ENABLED
+.B GEN_HEADER_SYSTEM_NOTIFY_ENABLED
 Enable/disable desktop notifications (default: yes)
 .SH CONFIGURATION FILE
 The configuration file located at ~/.config/myscripts/gen-header/settings.conf supports the following settings:
@@ -465,7 +468,7 @@ GEN_FILENAME="script"
 GEN_HEADER_SED_CMD="sed"
 
 # Notification Settings
-GEN_HEADER_NOTIFY_ENABLED="yes"
+GEN_HEADER_SYSTEM_NOTIFY_ENABLED="yes"
 .EE
 .RE
 .SH EXIT STATUS

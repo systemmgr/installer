@@ -26,7 +26,7 @@ _logr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --dir --list --open --clean --show --noerr --err --silent"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --dir --list --open --clean --show --noerr --err --silent"
   local SHORTOPTS=""
   local OPEN="$(___findcmd "$logdir" f || return)"
   local ARRAY="show__commands"

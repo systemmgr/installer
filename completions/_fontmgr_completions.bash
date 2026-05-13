@@ -26,7 +26,7 @@ _fontmgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --force --all"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --force --all"
   local SHORTOPTS=""
   local ARRAY="makecache list search available remove update install cron version"
   local LIST="agave all-the-icons AnonymousPro awesome-terminal CascadiaCode FiraCode fontawesome Hack LigatureSymbols MesloLGSNF Noto"

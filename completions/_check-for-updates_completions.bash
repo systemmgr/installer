@@ -26,7 +26,7 @@ _check-for-updates() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --help --options --raw --version --silent --force --ask --show --notify"
+  local LONGOPTS="--completions --config --debug --help --options --no-color --version --silent --force --ask --show --notify"
   local SHORTOPTS=""
   local ARRAY="show__none"
 

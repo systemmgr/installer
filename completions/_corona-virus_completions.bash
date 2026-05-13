@@ -26,7 +26,7 @@ _corona-virus() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --help --options --raw --version --silent --force --dir"
+  local LONGOPTS="--completions --config --debug --help --options --no-color --version --silent --force --dir"
   local SHORTOPTS=""
   local ARRAY=""
 

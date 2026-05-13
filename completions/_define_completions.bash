@@ -26,7 +26,7 @@ _define() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --help --options --raw --version --silent --gtk --dir"
+  local LONGOPTS="--completions --config --debug --help --options --no-color --version --silent --gtk --dir"
   local SHORTOPTS=""
   local ARRAY="multiple multi etymology etym cached cache similar clear-cache"
 

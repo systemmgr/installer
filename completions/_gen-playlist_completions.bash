@@ -49,7 +49,7 @@ _gen-playlist_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir "
+  LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir "
   LONGOPTS+=""
   #####################################################################
   ARRAY="genre album year all"
@@ -77,7 +77,7 @@ _gen-playlist_completion() {
       prev=""
       COMPREPLY=($(compgen -W 'long short list array' -- "$cur"))
       ;;
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

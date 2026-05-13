@@ -28,7 +28,7 @@ _ask_yes_no_question_completion() {
   #local SEARCHCMD="$(___findcmd "$SEARCHDIR/" "d" "1" | sort -u)"
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --terminal --off "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --terminal --off "
   local SHORTOPTS=""
   local ARRAY=""
 
@@ -45,7 +45,7 @@ _ask_yes_no_question_completion() {
     COMPREPLY=($(compgen -W '${SHORTOPTS:---}' -- ${cur})) && compopt -o nospace
   else
     case "${COMP_WORDS[1]:-$prev}" in
-    --debug | --raw | --help | --version | --config | --options)
+    --debug | --no-color | --help | --version | --config | --options)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

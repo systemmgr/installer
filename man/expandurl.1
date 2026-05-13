@@ -46,7 +46,7 @@ Display all available command-line options
 .BR \-\-debug
 Enable debug mode with verbose output showing redirect chain
 .TP
-.BR \-\-raw
+.BR \-\-no-color
 Disable colorized output for plain text display
 .TP
 .BR \-\-silent
@@ -140,7 +140,7 @@ Show complete redirect chain with debug output
 .B expandurl --silent https://tinyurl.com/test
 Expand URL without desktop notifications
 .TP
-.B expandurl --raw https://ow.ly/example | grep http
+.B expandurl --no-color https://ow.ly/example | grep http
 Expand and filter for URLs only
 .SH REDIRECT CHAIN
 Understanding how URL expansion works:
@@ -383,7 +383,7 @@ Check display server is running: echo $DISPLAY
 .IP \\(bu 2
 For Wayland, use wl-clipboard
 .IP \\(bu 2
-Terminal-only: Use --raw and pipe to file
+Terminal-only: Use --no-color and pipe to file
 .RE
 .SS Notifications Not Showing
 .RS

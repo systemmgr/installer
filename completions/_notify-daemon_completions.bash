@@ -26,7 +26,7 @@ _notify-daemon() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --enable --disable"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --enable --disable"
   local SHORTOPTS=""
   local ARRAY="config start stop restart status server client enable disable"
 

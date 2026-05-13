@@ -26,7 +26,7 @@ _screenshot-menu() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--help --config --debug --version --raw --silent --options --completions --delay --cursor --no-cursor --quality --format --tool --clipboard --file --both --upload --no-sound --open"
+  local LONGOPTS="--help --config --debug --version --no-color --silent --options --completions --delay --cursor --no-cursor --quality --format --tool --clipboard --file --both --upload --no-sound --open"
   local SHORTOPTS=""
   local ARRAY="full window region monitor quick annotate record"
   local TOOLS="auto maim scrot flameshot spectacle gnome-screenshot import grim"
@@ -68,7 +68,7 @@ _screenshot-menu() {
       _filedir
       return
       ;;
-    --config|--help|--version|--options|--debug|--raw|--silent|--cursor|--no-cursor|--clipboard|--file|--both|--upload|--no-sound|--open)
+    --config|--help|--version|--options|--debug|--no-color|--silent|--cursor|--no-cursor|--clipboard|--file|--both|--upload|--no-sound|--open)
       COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
     *)

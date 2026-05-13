@@ -26,7 +26,7 @@ _duckdns() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --api --domain --ip4 --ip6 --txt"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --api --domain --ip4 --ip6 --txt"
   local SHORTOPTS=""
   local ARRAY="update ssl cron info"
 

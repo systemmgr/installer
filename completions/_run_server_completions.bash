@@ -26,7 +26,7 @@ _run_server() {
   local SHOW_COMP_OPTS=""
   local FILEDIR="yes"
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent "
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent "
   local LONGOPTS+=",--bg --screen --editor --filemanager --browser --console --enable-browser --enable-filemanager "
   local LONGOPTS+=",--enable-editor --enable-all --disable-browser --disable-filemanager --disable-editor --disable-all --allow-root"
   local SHORTOPTS=""

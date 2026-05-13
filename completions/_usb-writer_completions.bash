@@ -24,7 +24,7 @@ _usb-writer() {
   local SEARCHDIR="${CONFDIR:-$HOME/.config/myscripts/usb-writer}"
   local SHOW_COMP_OPTS=""
   local OPTS=""
-  local LONGOPTS="--completions --config --debug --dir --help --options --raw --version --silent --label --no-verify"
+  local LONGOPTS="--completions --config --debug --dir --help --options --no-color --version --silent --label --no-verify"
   local SHORTOPTS=""
   local ARRAY=""
   local COMMANDS="create mount unmount iso"

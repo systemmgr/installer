@@ -27,7 +27,7 @@ _dfmgr() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --force --list --all"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --force --list --all"
   local SHORTOPTS=""
   local ARRAY="personal list search available update install cron version remove download"
   local LIST="alacritty asciinema bash bashtop byobu caja castero chromium cmus deadbeef deadd "

@@ -42,10 +42,10 @@ _gen-script() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --debug --raw --options --config --version --help --silent --dir --copy --config --function"
+  local LONGOPTS="--completions --debug --no-color --options --config --version --help --silent --dir --copy --config --function"
   local SHORTOPTS="-z -a -g -f -replace -readme -head"
   local ARRAY="new all ${FOLDERS}"
-  local HEADEROPTS="--no --help --user --raw --desc --todo --copy --other --res --type --functions --name --prev --replace --keep --pause --system"
+  local HEADEROPTS="--no --help --user --no-color --desc --todo --copy --other --res --type --functions --name --prev --replace --keep --pause --system"
 
   _init_completion || return
 

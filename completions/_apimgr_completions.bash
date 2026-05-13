@@ -50,7 +50,7 @@ _apimgr_completion() {
   SHORTOPTS=""
   SHORTOPTS+=""
   #####################################################################
-  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --raw --version --force --no- --yes-"
+  LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --force --no- --yes-"
   LONGOPTS+=" --repo --user --org --token --official --title --body --state --limit --branch --base --tag --format --visibility --provider --api"
   #####################################################################
   ARRAY="github gitlab gitea forgejo codeberg gitee pagure sourcehut onedev bitbucket docker ghcr glcr harbor quay cloudsmith artifactory jfrog nexus sonatype verify user org repo issue pr release tag image package component api"
@@ -93,7 +93,7 @@ _apimgr_completion() {
       COMPREPLY=($(compgen -W '' -- ${cur}))
       return 0
       ;;
-    --debug | --raw)
+    --debug | --no-color)
       COMPREPLY=($(compgen -W '${ARRAY} ${LONGOPTS} ${SHORTOPTS}' -- ${cur}))
       return 0
       ;;

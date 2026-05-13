@@ -26,7 +26,7 @@ _spellcheck() {
   local SHOW_COMP_OPTS=""
   local FILEDIR=""
   local OPTS=""
-  local LONGOPTS="--completions --options --config --version --help --dir --debug --raw --silent"
+  local LONGOPTS="--completions --options --config --version --help --dir --debug --no-color --silent"
   local SHORTOPTS=""
   local ARRAY="batch interactive check add-word add list-dicts dicts set-lang lang"
   local TEXTFILES="$(find . -maxdepth 2 -name "*.txt" -o -name "*.md" -o -name "*.rst" -o -name "*.tex" 2>/dev/null | head -20)"
@@ -72,7 +72,7 @@ _spellcheck() {
       _filedir
       return
       ;;
-    --options|--config|--help|--version|--debug|--raw|--silent)
+    --options|--config|--help|--version|--debug|--no-color|--silent)
       COMPREPLY=($(compgen -W '' -- "${cur}"))
       ;;
     *)
