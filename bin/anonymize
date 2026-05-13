@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122010-git
+##@Version           :  202605131400-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122010-git"
+VERSION="202605131400-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -109,6 +109,107 @@ if [ "$SHOW_RAW" = "true" ]; then
 else
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
 fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Inlined external functions - BEGIN
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Printf functions from colors.bash
+printf_newline() {
+  [[ -n "$1" ]] && printf '%b\n' "${*:-}" || printf '\n'
+}
+printf_green() {
+  printf_color "$1" 2
+  printf "\n"
+}
+printf_red() {
+  printf_color "$1" 208
+  printf "\n"
+}
+printf_purple() {
+  printf_color "$1" 5
+  printf "\n"
+}
+printf_yellow() {
+  printf_color "$1" 3
+  printf "\n"
+}
+printf_blue() {
+  printf_color "$1" 33
+  printf "\n"
+}
+printf_cyan() {
+  printf_color "$1" 6
+  printf "\n"
+}
+printf_return() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="208"
+  test -n "$1" && test -z "${1//[0-9]/}" && local exitCode="$1" && shift 1 || local exitCode="1"
+  local msg="$*"
+  [ ${#msg} = 0 ] || { printf_color "$msg" "$color" 1>&2 && printf "\n"; }
+  return ${exitCode:-2}
+}
+printf_error() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="208"
+  test -n "$1" && test -z "${1//[0-9]/}" && local exitCode="$1" && shift 1 || local exitCode="1"
+  local msg="$*"
+  printf_color "$ICON_ERROR $msg" "$color" 1>&2
+  printf "\n"
+  return $exitCode
+}
+printf_exit() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="208"
+  test -n "$1" && test -z "${1//[0-9]/}" && local exitCode="$1" && shift 1 || local exitCode="1"
+  local msg="$*"
+  shift
+  printf_color "$msg" "$color" 1>&2
+  printf "\n"
+  exit "$exitCode"
+}
+printf_read_question() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="208"
+  local msg="$1" && shift 1
+  test -n "$1" && test -z "${1//[0-9]/}" && local lines="$1" && shift 1 || local lines="120"
+  local reply="${1:-REPLY}" && shift 1
+  local readopts="${1:-}" && shift 1
+  printf_color "$msg " "${PRINTF_COLOR:-$color}"
+  read -t 30 -e -r -n $lines ${readopts:-} ${reply:-} || return 1
+  [ -z "$reply" ] && printf '\n' && return 1 || return 0
+}
+printf_answer_yes() {
+  local answerVar="${1:-$REPLY}"
+  if [[ "$answerVar" =~ ${2:-^[Yy]$} ]]; then
+    exitCode=0
+  elif [ -z "$answerVar" ] || [ "$answerVar" = "" ]; then
+    printf '\n'
+    exitCode=1
+  else
+    exitCode=1
+  fi
+  return ${exitCode:-0}
+}
+printf_custom() {
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="5"
+  local msg="$*"
+  shift
+  printf_color "$msg" "${PRINTF_COLOR:-$color}"
+  printf "\n"
+}
+printf_readline() {
+  set -o pipefail
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="6"
+  while read line; do
+    printf_color "$line" "${PRINTF_COLOR:-$color}"
+    printf "\n"
+  done
+  set +o pipefail
+}
+printf_column() {
+  local -a column=""
+  set -o pipefail
+  test -n "$1" && test -z "${1//[0-9]/}" && local color="$1" && shift 1 || local color="7"
+  cat - |& column | printf_readline "${color:-$COLOR}"
+  printf "\n"
+  set +o pipefail
+}
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional printf_ colors
 __printf_head() { printf_blue "$1"; }
