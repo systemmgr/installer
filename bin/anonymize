@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131440-git
+##@Version           :  202605131600-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605131440-git"
+VERSION="202605131600-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1260,7 +1260,21 @@ __profile_manager() {
 __monitor_connections() {
   while true; do
     printf '\033[2J\033[H'
-    printf_cyan "=== Active Connections === (Ctrl+C to stop)"
+    printf_cyan "=== Network Interfaces === (Ctrl+C to stop)"
+    if __cmd_exists ip; then
+      ip -brief addr show 2>/dev/null | grep -v '^lo '
+    fi
+    printf_cyan "=== Default Route (WAN) ==="
+    if __cmd_exists ip; then
+      ip route show default 2>/dev/null
+    elif __cmd_exists route; then
+      route -n 2>/dev/null | grep '^0\.0\.0\.0'
+    fi
+    printf_cyan "=== VPN / Tunnel Interfaces ==="
+    if __cmd_exists ip; then
+      ip -brief link show 2>/dev/null | grep -E 'tun|tap|wg|vpn|ppp|ipsec|l2tp|veth' | grep -v 'DOWN'
+    fi
+    printf_cyan "=== Active Connections ==="
     if __cmd_exists ss; then
       ss -tunap 2>/dev/null | grep ESTAB | head -20
     elif __cmd_exists netstat; then
