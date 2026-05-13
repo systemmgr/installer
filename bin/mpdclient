@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -316,20 +316,20 @@ __server_reconnect() {
       export MPDSERVER_HOST="$HOSTNAME"
       __execute_mpdclient || exit 1
     else
-      clear
+      printf '\033[2J\033[H'
       exit 1
     fi
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __server_failed() {
-  clear
+  printf '\033[2J\033[H'
   printf '\n\n\n\n'
   printf_red "$ICON_ERROR Failed to connect to the server @ $MPDSERVER"
   if __server_reconnect; then
     sleep 3 && return 0
   else
-    clear
+    printf '\033[2J\033[H'
     return 1
   fi
 }
@@ -495,7 +495,7 @@ volume_toggle() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 client() {
-  clear
+  printf '\033[2J\033[H'
   if [ -n "$MPDSERVER_HOST" ]; then
     if ping -c 1 "$MPDSERVER_HOST" &>/dev/null; then
       GETMPDSERVER="$MPDSERVER_HOST"
@@ -509,7 +509,7 @@ client() {
   if __cmd_exists ncmpcpp; then
     ncmpcpp -q -h $CONNECT_TO
   else
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n\n"
     printf_counter "1" "5" "ncmpcpp is not installed"
     return 1
@@ -598,7 +598,7 @@ __mpd_daemon() {
   __cmd_exists mpd || return 1
   is_up || printf_read_question "4" "MPD Server is not running. Would you like me to try to start it? " "1" "mpd_start"
   [ "$mpd_start" = y ] || return 1
-  clear
+  printf '\033[2J\033[H'
   printf '\n\n\n'
   printf_cyan "Attempting to start MPD server on $HOSTNAME"
   mpd &>/dev/null &
@@ -608,11 +608,11 @@ __mpd_daemon() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __mpd_failed() {
-  clear
+  printf '\033[2J\033[H'
   printf '\n\n\n\n'
   printf_yellow "Failed to connect to mpd daemon - $MPDCLIENT_MPD_SERVER_HOST"
   if ! __server_reconnect; then
-    clear
+    printf '\033[2J\033[H'
     exit 1
   fi
 }
@@ -660,7 +660,7 @@ __notification_service() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_app() {
-  clear
+  printf '\033[2J\033[H'
   printf '\n\n\n'
   printf_cyan "Initializing $APPNAME: $MPDCLIENT_MPD_SERVER_HOST" TEST_MPDSERVER_HOST="$MPDCLIENT_MPD_SERVER_HOST"
   __cmd_exists mpc || pkmgr silent install mpc || printf_exit "mpc is not installed"
@@ -696,9 +696,10 @@ __initialize_app() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __execute_mpdclient() {
+  printf '\033[?1049h'
   __notification_service
   while :; do
-    clear
+    printf '\033[2J\033[H'
     shift 1
     printf_newline "\n\n\n"
     is_up || break
@@ -732,7 +733,7 @@ __execute_mpdclient() {
     printf_green "z. quit"
     printf_newline
     printf_read_question "6" "Enter your choice  : " "1" "main"
-    clear && printf_newline "\n\n\n"
+    printf '\033[2J\033[H' && printf_newline "\n\n\n"
     case "$main" in
     1)
       shift 1
@@ -885,18 +886,19 @@ __execute_mpdclient() {
         __notifications "$APPNAME" "Sending $opts to $MPDSERVER_HOST"
         printf_read_question "6" "Press enter to continue " "120"
       else
-        clear
+        printf '\033[2J\033[H'
       fi
       ;;
     z)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *) shift ;;
     esac
     printf_counter "5" "$MPDCLIENT_MENU_TIMEOUT" "Re-loading menu in"
   done
+  printf '\033[?1049l'
   exit $?
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -299,7 +299,7 @@ __ssh_retry() {
     exitCode=$?
     count=$((1 + count))
   done
-  clear
+  printf '\033[2J\033[H'
   eval $MYSSH_SSH_BIN_FILE $connection 2>"$MYSSH_TEMP_FILE"
   return $?
 }
@@ -307,7 +307,7 @@ __ssh_retry() {
 __ssh_cli() {
   local hostname="${1:-$hostname}" connection="" exitCode=0
   [ -n "$username" ] || username=
-  clear
+  printf '\033[2J\033[H'
   if [ -n "$username" ]; then
     connect_notify="Attempting to connect to $hostname as $username"
     failed_notify="Failed to connect to $hostname as $username"
@@ -333,11 +333,11 @@ __ssh_cli() {
     }
   fi
   if [ "$MYSSH_MESSAGE" != "false" ]; then
-    clear
+    printf '\033[2J\033[H'
     printf_newline '\n\n\n\n'
     printf_yellow "Connection closed with status code ${exitCode:-0}"
     printf_pause "Press any key to continue"
-    clear
+    printf '\033[2J\033[H'
   fi
   return $exitCode
 }
@@ -420,7 +420,7 @@ __ssh_host() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __addhost() {
-  clear
+  printf '\033[2J\033[H'
   printf_newline '\n\n'
   printf_read_input "5" "Enter a name" "180" "name" "-e"
   grepin="$(grep -w "[H]ost.* $name" "$MYSSH_SSH_CONFIG_FILE" | head -n1 | grep '^' || echo '')"
@@ -444,7 +444,7 @@ __term() {
   fi
   # show menu
   while :; do
-    clear
+    printf '\033[2J\033[H'
     shift 1
     hostname="${hostname:-}"
     username="${username:-$USER}"
@@ -470,19 +470,19 @@ __term() {
     case "$main" in
     a)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __sshto
       ;;
     b)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       printf_read_input "What is your username?" "120" "username"
       printf_read_input "What is your server address?" "120" "hostname"
       [ -n "$username" ] && [ -n "$hostname" ] && __ssh_cli "$hostname" "${username:-$USER}" || printf_yellow "Something went wrong"
       ;;
     c)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       if [ -n "$SSH_CONNECTION" ] || [ -z "$DISPLAY" ]; then
         printf_read_input "What is your server address?" "120" "hostname"
       else
@@ -492,12 +492,12 @@ __term() {
       ;;
     d)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       $SHELL -l
       ;;
     e)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       $MYSSH_SSH_CONFIG_EDITOR "$MYSSH_SSH_CONFIG_FILE"
       ;;
     n)
@@ -518,7 +518,7 @@ __term() {
       fi
       ;;
     p)
-      clear
+      printf '\033[2J\033[H'
       printf_read_input "What is your username?" "120" "username"
       printf_read_input "What is your servers ID? [100]" "120" "host_id"
       [ -n "$host_id" ] || host_id="100"
@@ -526,7 +526,7 @@ __term() {
       ;;
     r)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       printf_newline '\n\n'
       [ -d "$HOME/.ssh/known_hosts.d" ] || mkdir -p "$HOME/.ssh/known_hosts.d"
       find -L "$HOME/.ssh/known_hosts.d" -type f -printf '%P\n' | printf_column 2>/dev/null
@@ -541,7 +541,7 @@ __term() {
       ;;
     s)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       if [ -f "$MYSSH_SSH_CONFIG_FILE" ]; then
         less <"$MYSSH_SSH_CONFIG_FILE" #| printf_readline $MYSSH_OUTPUT_COLOR
         printf_pause
@@ -551,21 +551,21 @@ __term() {
       ;;
     x)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       [ -s "$MYSSH_TEMP_FILE" ] && printf_readline < "$MYSSH_TEMP_FILE" || printf_cyan "The log file seems to be empty"
       printf_pause "Press any key to continue"
       ;;
     z)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *) shift ;;
     esac
-    clear
+    printf '\033[2J\033[H'
     #printf_counter "5" "1" "Re-loading menu in"
   done
-  clear
+  printf '\033[2J\033[H'
   exit $?
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -491,7 +491,7 @@ __run_server() {
   { "$@" &>"$RUN_SERVER_LOG_DIR/init.log" || __return_error || exit 1; } &
   export RUN_SERVER_SRV_WAIT_PID="$!"
   export RUN_SERVER_IS_RUNNING="true"
-  clear
+  printf '\033[2J\033[H'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 run_editor() {
@@ -702,7 +702,7 @@ __prog_check() {
     export RUN_SERVER_DAEMON="$RUN_SERVER_PROGRAM"
     unset ERROR_MESSAGE
   else
-    clear
+    printf '\033[2J\033[H'
     echo "$ERROR_MESSAGE" >>"$RUN_SERVER_LOG"
     print_exit "$ERROR_MESSAGE"
   fi
@@ -825,13 +825,13 @@ __setup_directory() {
   RUN_SERVER_CWD="$(realpath "$RUN_SERVER_CWD" 2>/dev/null || echo "$RUN_SERVER_DEFAULT_DIR")"
   if [ "$RUN_SERVER_CWD" == "$HOME" ]; then
     trap 'clear;__trap_exit_local;exit 1' SIGINT EXIT
-    clear
+    printf '\033[2J\033[H'
     printf_newline '\n\n\n'
     printf_red "Running this in your HOME directory is not supported"
     printf_yellow "Changing RUN_SERVER_CWD to $RUN_SERVER_DEFAULT_DIR"
     printf_pause "Press any key to continue or control-c to cancel"
     RUN_SERVER_CWD="$RUN_SERVER_DEFAULT_DIR"
-    clear
+    printf '\033[2J\033[H'
   fi
   printf_newline '\n\n\n'
   [ -d "$RUN_SERVER_CWD" ] || mkdir -p "$RUN_SERVER_CWD"
@@ -880,7 +880,7 @@ start_run_server() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_app() {
-  clear
+  printf '\033[2J\033[H'
   printf_newline '\n\n\n'
   [ -n "${2:-$1}" ] && __number_test "${2:-$1}" && RUN_SERVER_PORT="${2:-$1}" || RUN_SERVER_PORT="$RUN_SERVER_DEFAULT_PORT"
   __setup_directory "$RUN_SERVER_CWD"

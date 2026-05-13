@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -311,7 +311,7 @@ __term() {
   shopt -s extglob
   __get_project_name
   while :; do
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n\n"
     printf_head "${APPNAME^^} Menu - Current task: $TASKS_PROJECT_NAME"
     printf_green "0. Reload menu"
@@ -335,7 +335,7 @@ __term() {
     case $main in
     1)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __change_project_name
       ;;
     0)
@@ -343,68 +343,68 @@ __term() {
       ;;
     a)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       printf_cyan "What would you like to add - control+d when done"
       input="$(cat -)"
       __execute_menu "add" "$input"
       ;;
     b)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "start"
       ;;
     c)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "stop"
       ;;
     d)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "session"
       ;;
     e)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "done"
       ;;
     f)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "info"
       ;;
     g)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "report"
       ;;
     h)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "list"
       ;;
     i)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "clean"
       ;;
     j)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __execute_menu "delete"
       ;;
     x)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       ;;
     $'\E' | $'\e' | z) break ;;
     *) shift ;;
     esac
     printf_newline "\n\n"
     printf_counter "$TASKS_OUTPUT_COLOR_2" "$TASKS_MENU_TIMER" "Re-loading menu in"
-    clear
+    printf '\033[2J\033[H'
   done
-  clear
+  printf '\033[2J\033[H'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -666,7 +666,7 @@ __term() {
   trap '$APPNAME --term' SIGINT
   shift $#
   while :; do
-    clear
+    printf '\033[2J\033[H'
     # show menu
     status="$(__getstatus && echo -n "Running $NOTIFY_DAEMON_NAME" || echo -e "Not Running")"
     shift
@@ -684,7 +684,7 @@ __term() {
     printf_read_question_nt "6" "Enter your choice [a-z] : " "1" "main"
     printf_newline
     # take action
-    clear
+    printf '\033[2J\033[H'
     printf '\n\n\n'
     case "$main" in
     a)
@@ -714,7 +714,7 @@ __term() {
       ;;
     z)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *) shift ;;
@@ -722,7 +722,7 @@ __term() {
     printf_newline "\n\n"
     printf_counter "5" "3" "Re-loading menu in"
   done
-  clear
+  printf '\033[2J\033[H'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined variables/import external variables

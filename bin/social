@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -300,10 +300,11 @@ post_to_social() {
   fi
 }
 __execute_social() {
+  printf '\033[?1049h'
   shopt -s extglob
   trap '' SIGINT SIGQUIT SIGTSTP
   while :; do
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n\n"
     printf_head "Social Media Menu"
     printf_green "0. open a new window"
@@ -326,43 +327,43 @@ __execute_social() {
       ;;
     a)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __cmd_exists rainbowstream && rainbowstream -iot || printf_red "rainbowstream is not installed"
       ;;
     b)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __cmd_exists tootstream && tootstream || printf_red "tootstream is not installed"
       ;;
     c)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __cmd_exists irssi && irssi || printf_red "irssi is not installed"
       ;;
     d)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       __cmd_exists finch && finch || printf_red "finch is not installed"
       ;;
     x)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       post_to_social
       ;;
     y)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       printf_newline '\n\n\n'
       __custom_menus
       ;;
     $'\E' | $'\e' | z) break ;;
     *) shift ;;
     esac
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n"
     printf_counter "$SOCIAL_OUTPUT_COLOR_2" "$SOCIAL_MENU_TIMER" "Re-loading menu in"
   done
-  clear
+  printf '\033[?1049l'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined variables/import external variables

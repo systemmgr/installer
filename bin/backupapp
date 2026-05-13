@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605071853-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605071853-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -428,11 +428,11 @@ __term() {
   local cont="" save="" main=""
   _APPNAME="${_APPNAME:-}"
   _APPDIRS="${_APPDIRS:-}"
-  clear
+  printf '\033[2J\033[H'
   printf_newline '\n\n\n\n\n'
   __get_name "$_APPNAME"
   while :; do
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n\n"
     printf_head "Backup Menu for ${_APPNAME:-default}"
     printf_custom "6" "Welcome to the backup menu: type quit to exit"
@@ -443,7 +443,7 @@ __term() {
     printf_green "r. Restore files"
     printf_green "z. Exit"
     printf_read_question_nt "6" "Enter your choice [c,e,r,s,z] : " "1" "main"
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n"
 
     case $main in
@@ -461,7 +461,7 @@ __term() {
     s) __save_config "$_APPNAME" ;;
     z)
       shift 1
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *)
@@ -489,7 +489,7 @@ __term() {
       ;;
     esac
   done
-  clear
+  printf '\033[2J\033[H'
   printf_newline "\n\n"
   exit $?
 }

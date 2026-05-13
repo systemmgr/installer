@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -342,6 +342,7 @@ cmdlist_renew() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __execute_sshto() {
+  printf '\033[?1049h'
   trap '' SIGINT
   __colors
   IFSOLD=$IFS
@@ -373,6 +374,7 @@ __execute_sshto() {
   list=("${fullist[@]}")
   [[ $filter ]] && new_list
   first_dialog
+  printf '\033[?1049l'
   bye
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -465,7 +467,7 @@ EOF
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 system_info() {
-  clear
+  printf '\033[2J\033[H'
   __ssh $SSH_OPT $target "
         printf '\n${BLD}Hostname:${DEF}\n'
         hostname
@@ -502,23 +504,23 @@ pause() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 go_to_target() {
-  clear
+  printf '\033[2J\033[H'
   __ssh $SSH_OPT $target || false
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 add_aliases() {
-  clear
+  printf '\033[2J\033[H'
   scp $SSH_OPT ~/.bash_aliases $target:~
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 run_command() {
-  clear
+  printf '\033[2J\033[H'
   __ssh $SSH_OPT -t $target $command
   autoconnect
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 add_sshkey() {
-  clear
+  printf '\033[2J\033[H'
   ssh_yes "$SSH_OPT $target" >/dev/null
   ssh-copy-id -i $SSHTO_SSH_KEY $SSH_OPT $target
 }

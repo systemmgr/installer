@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -314,7 +314,7 @@ __open_file_menus() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __run_menu_start() {
-  clear
+  printf '\033[2J\033[H'
   if __running "$1"; then
     __start "$@" && return 0 || return 1
   else
@@ -334,7 +334,7 @@ __attempt_install_menus() {
   }
   if message; then
     sleep 2
-    clear
+    printf '\033[2J\033[H'
     __pkmgr_gui "$prog"
     type -P "$prog" &>/dev/null && pkmgr_exitCode=0 || pkmgr_exitCode=1
     if [ "$pkmgr_exitCode" = 0 ]; then
@@ -365,9 +365,10 @@ __custom_menus() {
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __execute_videos() {
+  printf '\033[?1049h'
   while :; do
     main=""
-    clear
+    printf '\033[2J\033[H'
     shift 1
     printf_newline "\n\n\n\n"
     printf_head "Video applications Menu"
@@ -468,16 +469,16 @@ __execute_videos() {
       continue
       ;;
     $'\E' | $'\e' | z)
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *) shift ;;
     esac
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n"
     printf_counter "$VIDEOS_OUTPUT_COLOR_" "$VIDEOS_MENU_TIMER" "Re-loading menu in"
   done
-  clear
+  printf '\033[?1049l'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined variables/import external variables

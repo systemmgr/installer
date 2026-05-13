@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605051121-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605051121-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -444,7 +444,7 @@ __ssh_viewer() {
   local tries="10"
   ip="$(__get_ip "${name}" | tail -n1)"
   idFile="$(__get_id_file "$idFile")"
-  clear
+  printf '\033[2J\033[H'
   while [ $tries -gt 0 ]; do
     __printf_reset "Attempting to connect to ${ip}..." 3
     __start "$name" &>/dev/null && sleep 2 || sleep .5
@@ -455,7 +455,7 @@ __ssh_viewer() {
   id_file="$(__get_id_file "$idFile" || __get_id_file "$ip")"
   if [ -n "$ip" ]; then
     if __test_connection "$ip"; then
-      clear
+      printf '\033[2J\033[H'
       __ssh "${ip}" "${user}" "${id_file}" && clear
       exit
     else

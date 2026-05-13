@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -301,7 +301,7 @@ __prompt_message() {
     [ -n "$SEND" ] || [ "$SEND" != "" ] || [ -n "$RERUN" ] || SEND="--help"
     COMMAND="export DISPLAY="";sleep 3;clear;printf '\n\n\n\n\n';$CMD $SEND"
   fi
-  clear
+  printf '\033[2J\033[H'
   PROMPT=""
   bash -c "${COMMAND:-$CMD}" || false
   exitCode=$?
@@ -311,7 +311,7 @@ __prompt_message() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __exec() {
-  clear
+  printf '\033[2J\033[H'
   __cmd_exists "$1" && eval $1 ${2:-} || { printf '\n\n\n\n' && printf_pause "$1 is not installed" && false; }
   return $?
 }
@@ -320,17 +320,18 @@ __run() {
   [ "$1" = "NOPROMPT" ] && shift 1 && local PROMPT="no" || local PROMPT="${PROMPT:-}"
   CMD="$1" && shift 1
   sleep .5
-  clear
+  printf '\033[2J\033[H'
   __prompt_message
   [ "$SEND" = "--help" ] && RERUN="true" __prompt_message
   return $exitCode
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __execute_menu() {
+  printf '\033[?1049h'
   trap '' SIGINT SIGQUIT SIGTSTP
   while :; do
     CMD="" PROMPT="" MESSAGE="" COMMAND="" CUSTOM_CMD="" RERUN="" SHOW_HELP=""
-    clear && shift $# && printf_newline "\n\n\n\n"
+    printf '\033[2J\033[H' && shift $# && printf_newline "\n\n\n\n"
     printf_head "Application Menu"
     printf_green "0. Reload menu"
     printf_green "1. launch notes"
@@ -361,7 +362,7 @@ __execute_menu() {
     printf_green "z. Exit"
     printf_green "---------------------------------"
     printf_read_question_nt "6" "Enter your choice [a-z] : " "1" "main"
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n\n"
 
     # take action
@@ -504,17 +505,17 @@ __execute_menu() {
       fi
       ;;
     z)
-      clear
+      printf '\033[2J\033[H'
       break
       ;;
     *) shift ;;
 
     esac
-    clear
+    printf '\033[2J\033[H'
     printf_newline "\n\n"
     printf_counter "5" "$MYMENU_MENU_TIMER" "Re-loading menu in"
   done
-  clear
+  printf '\033[?1049l'
   exit ${exitCode:-0}
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -

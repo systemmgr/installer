@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -300,7 +300,7 @@ __run_myssh() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval $run_cmd --kill "$kill_file"
     fi
   done
@@ -320,7 +320,7 @@ __run_shell() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval $run_cmd && $SHELL || break
     fi
   done
@@ -341,7 +341,7 @@ __run_loop() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval $run_cmd
     fi
   done
@@ -362,7 +362,7 @@ __run_wait() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval $run_cmd
       wait
     fi
@@ -384,7 +384,7 @@ __run_application() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval $run_cmd && eval $SHELL || break
     fi
   done
@@ -406,7 +406,7 @@ __run_log() {
       rm -Rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval tail -f $run_cmd
     fi
   done
@@ -429,7 +429,7 @@ __cd() {
       rm -rf "$kill_file"
       break
     else
-      clear && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
+      printf '\033[2J\033[H' && printf_cyan "Starting $message on a loop - ^c to exit $(date)"
       eval ${SHELL:-bash}
     fi
   done

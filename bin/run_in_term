@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605122002-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605122002-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -300,7 +300,7 @@ __check_cmd() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __quit_check() {
   if [ "${1:-$__ANSWER}" = "exit" ] || [ "${1:-$__ANSWER}" = "quit" ] || [ "${1:-$__ANSWER}" = "!q" ]; then
-    clear
+    printf '\033[2J\033[H'
     return 0
   else
     return 1
@@ -323,11 +323,11 @@ __execute_run_in_term() {
       printf_read_input "5" "What would you like to pass to $CMD?" "120" "__ANSWER" '-e'
       __quit_check "$__ANSWER" && clear && break
       if [ "$__ANSWER" = _help_ ]; then
-        clear
+        printf '\033[2J\033[H'
         printf_cyan "Usage: Enter the commands for $CMD or type exit to quit"
         continue
       fi
-      clear
+      printf '\033[2J\033[H'
       printf_newline "\n\n\n"
       __check_cmd $CMD "$__ANSWER"
       printf_newline "\n"
