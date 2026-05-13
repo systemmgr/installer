@@ -2,45 +2,60 @@
 
 This file answers **what** this project is and what it contains.
 How things are done: see `AI.md`.
-Rules: see the rules file in the repo root.
 
 ---
 
-## Project Overview
+## Project description
 
 A curated collection of bash scripts for system administration, development
-tooling, and personal automation. Scripts are designed to be self-contained,
-portable across Linux distributions, and installable as a dotfiles suite.
+tooling, and personal automation. Scripts are self-contained, portable across
+Linux distributions, and installable as a dotfiles suite. Every script follows
+a consistent header format, UX conventions (--help, --version, --debug,
+--no-color), and documentation triple (inline help, man page, bash completion).
 
 ---
 
-## Goals
+## Project variables
+
+```
+project_name:   scripts
+project_org:    casjay-dotfiles
+internal_name:  scripts
+internal_org:   casjaysdev
+author:         Jason Hempstead
+contact:        jason@casjaysdev.pro
+license:        WTFPL
+repo:           https://github.com/casjay-dotfiles/scripts
+```
+
+---
+
+## Business logic
+
+### Goals
 
 - One script per concern — no monolithic tools
-- Self-contained scripts with no runtime dependencies beyond bash and standard POSIX utilities
-- Consistent UX: every script supports `--help`, `--version`, `--debug`, `--raw`
-- Portable across amd64, arm64, and arm (armv7l)
+- Self-contained: no runtime deps beyond bash 4+ and standard POSIX utilities
+- Consistent UX: every script supports `--help`, `--version`, `--debug`, `--no-color`
+- `NO_COLOR` env var honored per no-color.org spec
+- Portable across `linux/amd64`, `linux/arm64`, `linux/arm` (armv7l)
 - Installable system-wide or per-user via `install.sh`
 
----
-
-## Directory Structure
+### Directory structure
 
 ```
-bin/                  executable scripts (one per tool)
-functions/            shared function libraries (sourced by scripts during migration)
-completions/          bash completions: _{script}_completions.bash
-man/                  man pages: {script}.1
-templates/            script generation templates (gen-script output)
-tests/                test scripts
-containers/           Dockerfiles + docker-compose.yml for distro testing
+bin/            executable scripts (one per tool)
+functions/      shared function libraries (sourced during migration only)
+completions/    bash completions: _{script}_completions.bash
+man/            man pages: {script}.1
+templates/      script generation templates (gen-script/gen-header output)
+tests/          test scripts
+containers/     Dockerfiles + docker-compose.yml for distro testing
 ```
 
----
+### Script categories
 
-## Script Categories
-
-### System Administration
+**System administration**
 - `pkmgr` — unified package manager wrapper (apt/dnf/pacman/apk/brew/etc.)
 - `sysusage` — system resource usage summary
 - `setupmgr` — install third-party tools not in distro repos (binary/archive/npm/pip)
@@ -49,67 +64,36 @@ containers/           Dockerfiles + docker-compose.yml for distro testing
 - `update-lecerts` — Let's Encrypt certificate renewal automation
 - `proxmox-cli` — Proxmox VE management helpers
 
-### Development Tooling
+**Development tooling**
 - `gitcommit` — sign + commit + push wrapper (the only commit path)
 - `gitadmin` — git repository administration helpers
 - `gen-changelog` — generate changelogs from git history
 - `buildx` — multi-arch container image builder (Docker BuildKit wrapper)
 - `dockermgr` — Docker image/container management
-- `apimgr` — multi-provider container registry + git forge API client
+- `composemgr` — Docker Compose project management
+- `apimgr` — multi-provider container registry + git forge API client (18 providers)
 - `gen-script` — scaffold new scripts from templates
-- `gen-playlist` — generate media playlists
+- `gen-header` — generate/update script headers and boilerplate
 
-### Networking & Security
-- `anonymize` — anonymity tooling (Tor, I2P, Freenet, Lokinet, VPN, MAC randomization)
+**Networking & security**
+- `anonymize` — anonymity tooling (Tor, I2P, VPN, MAC randomization)
 - `cloudflare` — Cloudflare DNS/tunnel management
-- `captive-auth` — captive portal automation
 - `pastebin` — upload snippets to pastebin services
 
-### Environment & Desktop
+**Environment & desktop**
 - `dotfiles` — unified dotfiles manager (delegates to dfmgr, desktopmgr, etc.)
 - `randomwallpaper` — rotating desktop wallpaper daemon
 - `tmux-new` — tmux session/window launcher with config templates
 - `zellij-new` — zellij session launcher
 - `notifications` — desktop notification helper
 
-### Utilities
+**Utilities**
 - `dictionary` — offline word lookup
 - `reqpkgs` — check/install required packages for a script
 - `gen-nginx` — generate nginx vhost configs
 - `latest-iso` — fetch latest distro ISO URLs
 
----
-
-## Configuration Layout
-
-```
-~/.config/myscripts/{scriptname}/     per-user config
-~/.local/log/{scriptname}/            per-user logs
-/etc/casjaysdev/{scriptname}/         system-wide config (root installs)
-```
-
----
-
-## Installation
-
-```bash
-bash install.sh
-```
-
-Copies `bin/*` to `/usr/local/bin/`, man pages to `/usr/local/man/man1/`,
-completions to `/etc/bash_completion.d/`.
-
----
-
-## Supported Architectures
-
-- `linux/amd64` (x86_64)
-- `linux/arm64` (aarch64)
-- `linux/arm` (armv7l)
-
----
-
-## Script Header Format
+### Script header format
 
 Every script begins with:
 
@@ -128,12 +112,24 @@ Every script begins with:
 # @@Description      :  {one-line description}
 # @@Changelog        :  {what changed}
 # @@TODO             :  Better documentation
+# @@Other            :
+# @@Resource         :
+# @@Terminal App     :  no
+# @@sudo/root        :  no
 # @@Template         :  bash/{type}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 ```
 
----
+### Configuration layout
 
-## Key External Dependencies
+```
+~/.config/myscripts/{scriptname}/     per-user config
+~/.local/log/{scriptname}/            per-user logs
+/etc/casjaysdev/{scriptname}/         system-wide config (root installs)
+```
+
+### External dependency policy
 
 Scripts detect and adapt to whatever is available:
 - Package managers: apt, dnf, pacman, apk, brew, zypper, xbps
@@ -142,3 +138,18 @@ Scripts detect and adapt to whatever is available:
 - Display servers: X11, Wayland, headless
 
 No hard runtime dependencies beyond bash 4+ and standard POSIX utilities.
+
+### Installation
+
+```bash
+bash install.sh
+```
+
+Copies `bin/*` to `/usr/local/bin/`, man pages to `/usr/local/man/man1/`,
+completions to `/etc/bash_completion.d/`.
+
+### Supported architectures
+
+- `linux/amd64` (x86_64)
+- `linux/arm64` (aarch64)
+- `linux/arm` (armv7l)

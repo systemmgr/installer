@@ -1,7 +1,7 @@
 # AI.md — HOW
 
 This file answers **how** things are done in this project.
-Rules and communication behavior: see the rules file in the repo root.
+Rules and communication behavior: see the global user rules file.
 What the project is: see `IDEA.md`.
 
 ---
@@ -38,7 +38,7 @@ Every session, in order:
 
 ### The only commit path
 
-```
+```bash
 # 1. Check what changed
 git status --porcelain
 git diff --stat
@@ -54,21 +54,22 @@ cat > .git/COMMIT_MESS << 'EOF'
 EOF
 
 # 3. Commit + push
-gitcommit {subcommand}
+gitcommit all
 ```
 
-`gitcommit` signs, commits, and pushes in one shot. The wrapper deletes `COMMIT_MESS` on success.
+`gitcommit` signs, commits, and pushes in one shot. The wrapper deletes
+`COMMIT_MESS` on success.
+
+**Key behavior:** when `.git/COMMIT_MESS` exists, `gitcommit` stages ALL
+changed files regardless of which subcommand is passed. Use `all` as the
+standard subcommand.
 
 ### Subcommand reference
 
-| Subcommand | Stages |
+| Subcommand | Effect |
 |---|---|
-| `all` | everything (`git add -A`) |
-| `bin` | `bin/` only |
-| `modified` | tracked modified files |
-| `new` | untracked files only |
-
-Use `all` when changes span multiple directories. Use `bin` for script-only changes.
+| `all` | stage everything + commit using COMMIT_MESS |
+| `push` | push without committing (no COMMIT_MESS needed) |
 
 ### Forbidden
 
@@ -80,16 +81,18 @@ Use `all` when changes span multiple directories. Use `bin` for script-only chan
 ### Commit message format
 
 ```
-{type}({scope}): {subject} — <=72 chars total
+{emoji} {subject} — <=72 chars total {emoji}
 
 {body: what and why, not how}
 
 - {path}: {one-line description of change}
 ```
 
-Types: `feat` / `fix` / `docs` / `style` / `refactor` / `perf` / `test` / `chore`
+Emoji map: ✨ feat · 🐛 fix · 📝 docs · 🎨 style · ♻️ refactor · ⚡ perf
+           ✅ test · 🔧 chore · 🔒 security · 🗑️ remove · 🚀 deploy · 📦 deps
 
-One logical change per commit. Unrelated changes = separate commits. Never commit mid-task with files in an inconsistent state.
+One logical change per commit. Unrelated changes = separate commits.
+Never commit mid-task with files in an inconsistent state.
 
 ---
 
@@ -111,6 +114,14 @@ One logical change per commit. Unrelated changes = separate commits. Never commi
 - Format: `YYYYMMDDHHMM-git`
 - Locations: `##@Version` header line AND `VERSION=` variable (first occurrence only)
 - Bump both on every change; templates contain `GEN_SCRIPT_REPLACE_VERSION` — leave those alone
+
+### Shellcheck disable
+
+Single combined line, full canonical set — never split across multiple lines:
+
+```bash
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
+```
 
 ### Control flow
 
@@ -196,12 +207,23 @@ fi
 
 ## Self-Contained Scripts
 
-Scripts in `bin/` are moving to fully self-contained (no external functions file dependency). Rules for standalone scripts:
+Scripts in `bin/` are fully self-contained — no external functions file dependency. Rules:
 
-- Must inline the full `printf_color` + `printf_*` block (not sourced from `mgr-installers.bash`)
+- Must inline the full `printf_color` + `printf_*` block (not sourced from any lib)
 - Must define all `__` helper functions they use
-- Network fetches, version checks, heavy I/O: only run inside the specific `case` branch that needs them — never unconditionally at startup
-- `__sleep` must use `sleep N` — `read -t N _ </dev/null` returns immediately on EOF and is a no-op
+- Network fetches, version checks, heavy I/O: only run inside the specific `case` branch
+  that needs them — never unconditionally at startup
+- `__sleep` must use `sleep N` — `read -t N _ </dev/null` is a no-op on EOF
+
+---
+
+## Color & NO_COLOR
+
+- `--no-color` flag sets `SHOW_RAW="true"` internally
+- `NO_COLOR` env var is checked independently per no-color.org spec:
+  `[ -n "${NO_COLOR+x}" ]` — handles set-to-empty correctly
+- Colorization block: `if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then`
+- Early argv check (before getopt): `[ "$1" = "--no-color" ] && export SHOW_RAW="true"`
 
 ---
 
@@ -229,11 +251,10 @@ Mandatory when 2+ tasks are given or the session is complex.
 ```
 
 Lifecycle:
-1. User gives 2+ tasks -> create `TODO.AI.md` immediately
-2. After each task -> move to Completed
-3. All done -> empty the file (keep the file; blank = nothing outstanding)
-4. Update session history in this file
-5. Write `.git/COMMIT_MESS` and commit
+1. User gives 2+ tasks → create `TODO.AI.md` immediately
+2. After each task → move to Completed
+3. All done → empty the file (keep the file; blank = nothing outstanding)
+4. Write `.git/COMMIT_MESS` and commit
 
 ---
 
@@ -246,113 +267,28 @@ Lifecycle:
 
 ---
 
-## Security Additions
+## Security
 
-- No `curl | sh` patterns
+- No `curl | sh` patterns — always download then inspect/verify before running
 - Use `sudo tee` instead of redirect for privileged writes
 - Never hardcode secrets — all repos are public
+- No `bash -x` on code paths that build auth headers (`set -x` exposes tokens in stderr)
+- No `--token`/`--api-key`/`--password` values in test commands (GitGuardian flags the pattern)
 
 ---
 
 ## Session History
 
-### Session 2025-01-24: Git Log Enhancements & AI Workflow
+Decisions and conventions established — not a work log.
 
-Established AI workflow rules; enhanced gitcommit log, gen-changelog, gitadmin.
-Created AI.md master context file. Added comment-above-code standard.
-
-### Session 2026-01-13: setupmgr Unified Installation Refactoring
-
-Fixed `__install_from_binary` arg-passing bug. Converted act + incus tools to
-unified `__install_from_archive` / `__install_from_binary` helpers (40 lines -> 3).
-
-### Session 2026-01-14: Comprehensive Testing & Tool Removal
-
-Tested all 95 converted setupmgr tools. Fixed zoxide strip-components bug and
-tokei release fallback. Removed 6 tools with no available binaries.
-
-### Session 2026-04-05: Fix dockermgr manifest command (Docker 25+)
-
-Fixed platform names (x86_64 -> amd64), empty `$amend` guard, `--amend` flag
-misuse, `$oci_labels` word-splitting (string -> bash array), BuildKit stdin
-(`-` -> `-f - .`).
-
-### Session 2026-04-18: UUOC elimination across all 222 scripts
-
-Universal: `APPNAME="${0##*/}"`, `${SUDO##*/}`, `__is_an_option` with `[[ ]]`.
-Script-specific: sysusage, reqpkgs, proxmox-cli, pastebin, buildx, gen-nginx,
-dictionary, notifications. All 222 pass `bash -n`. Added UUOC rule to AI.md.
-
-### Session 2026-04-19: UUOC elimination in templates/ (shebang-aware)
-
-Applied bash-only rewrites to 23 of 37 bash templates. Skipped sh/fish/zsh.
-Fixed gen-script heredoc generators so newly generated scripts start clean.
-
-### Session 2026-04-24: Completion extensions + setupmgr installer fixes
-
-Renamed all 242 completions to `.bash` extension. Fixed copilot (npm ->
-native binary), aicli output format, openclaw added. Hardened all
-`__download_*` wrappers to validate url before setting temp-file vars.
-
-### Session 2026-04-24 (cont): 13-package test — 5 bugs found and fixed
-
-Install/update/remove lifecycle tested on 13 packages. Fixed: ollama zstd
-detection, aicli/copilot dispatcher arg-leak, output format standardisation,
-ripgrep->rg name map, aicli/ollama/openclaw remove state cleanup.
-Added `__remove_npm_global` helper and `__is_package_installed` map.
-
-### Session 2026-05-01 -> 2026-05-04: Cloudflare hardening + apimgr build (v1->v18)
-
-Cloudflare: auth/DNS bugs, timeout guards, `__cf_fqdn` wildcard fix, IPv6
-reconciliation. apimgr: built from stub to 3000+ line script covering
-18 providers (artifactory, bitbucket, cloudsmith, codeberg, docker, forgejo,
-gitea, gitee, ghcr, github, gitlab, glcr, harbor, nexus, onedev, pagure,
-quay, sourcehut). Pure env-var mapping, per-provider auth wrappers,
-single `__apimgr_curl` source.
-
-### Session 2026-05-04: buildx — silent output + Ctrl+C fix
-
-Removed `&>/dev/null` from all 5 build pipelines; added `__trap_int`;
-changed `--progress auto` -> `--progress plain`; UUOC fixes in
-`__complete_url` and `__parse_dockerfile_labels`.
-
-### Session 2026-05-04 (cont): buildx — log path + init log
-
-Log path derived from `push_tag` via parameter expansion instead of git-dir
-org. `mkdir` double-prefix fixed. Init log split to `init.log`.
-UUOC fixes in `__set_variables`.
-
-### Session 2026-05-08: pkmgr/detectostype fixes, container testing, captive-auth
-
-- `bin/detectostype`: `VERSION_ID=` fallback for Alpine; `__detectostype_sourced`
-  guard to prevent sourced script from hijacking parent args / calling exit.
-- `bin/pkmgr`: sourcing guard, `__exec_unbuffered` bash -c fix for busybox script,
-  `__show_info notruncate` fix, key management helpers for apk, `pip check exitCode` fix.
-- `man/pkmgr.1` + `completions/_pkmgr_completions.bash`: full sync with script.
-- `install.sh`: `systemctl enable --now vnstat` guarded; manager `--config` loop
-  and network helpers wrapped with `timeout`.
-- `containers/Dockerfile.arch`: base image `casjaysdev/archlinux`, COPY from build context.
-- `containers/docker-compose.yml`: all 6 distros added, `tty: true` + `stdin_open: true`.
-- `bin/captive-auth` + man page + completions: added from detecthotspot project.
-
-### Session 2026-05-13: composemgr fixes, tmux-new PREFIX+N, printf_ inline, bug audit
-
-- `bin/composemgr`: 10 bugs fixed (curl -O->-o, .env.sample->default.env.sample,
-  empty sed pattern, invalid grep BRE, push case calling pull, etc.).
-  Added init.sh execution hook after env file generation.
-- `composemgr/.github/example/*`: aligned default.env.sample, app.env.sample,
-  docker-compose.yaml with actual script output.
-- `templates/tmux/new.conf`: fixed PREFIX+N (`--name %1` flag); replaced
-  `bind-key t new-window` with `unbind-key t` (sidebar plugin owns it).
-- `bin/anonymize`, `bin/gen-playlist`, `bin/update-lecerts`: inserted full
-  `printf_*` inline block; self-contained scripts missing color function
-  definitions caused "command not found" at runtime.
-- `bin/anonymize`: `__init_versions` moved from unconditional startup into
-  install-only case branches. `__monitor_connections`: fixed screen-clear
-  placement, added LAN device section (`ip neigh`/`arp -n`), fixed `__sleep`
-  (was a no-op via /dev/null), set 5s refresh interval.
-- `bin/dotfiles`: `exit #?` -> `exit $?` (13 branches), `shist 1` -> `shift 1`.
-- `bin/randomwallpaper`: `printf_head` -> `__printf_head`, removed stray
-  `shift 1` inside menu loop.
-- `bin/zellij-new`: removed stray trailing `'` from two comment separator lines.
-- Spec restructured into three files: rules / how (AI.md) / what (IDEA.md).
+- **2026-01**: Established AI workflow; `gitcommit` as sole commit path; comment-above-code standard
+- **2026-01**: `__install_from_archive` / `__install_from_binary` unified helpers in setupmgr
+- **2026-04**: UUOC elimination — `APPNAME="${0##*/}"`, bash builtins over forks, `[[ ]]` throughout
+- **2026-04**: UUOC applied to templates/ (bash-only; sh/fish/zsh skipped)
+- **2026-04**: All completions renamed to `.bash` extension
+- **2026-05**: `__sleep` must use `sleep N` (read -t is a no-op on EOF)
+- **2026-05**: `--raw` (color flag) renamed to `--no-color` everywhere; `NO_COLOR` env var support added
+- **2026-05**: Shellcheck disable: single combined line, full canonical SC set
+- **2026-05**: `gitcommit`: COMMIT_MESS presence triggers stage-all regardless of subcommand
+- **2026-05**: gen-header structural update: 4 header fields restored (@@Other, @@Resource,
+  @@Terminal App, @@sudo/root); boilerplate aligned to bash/system template
