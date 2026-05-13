@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122002-git
+##@Version           :  202605122025-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122002-git"
+VERSION="202605122025-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -324,7 +324,7 @@ __trap_exit_local() {
   return ${retval:-0}
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-__random_port() { echo "$((51000 + $RANDOM % 100))" | grep '^' || return 1; }
+__random_port() { echo "$((51000 + RANDOM % 100))"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __netstat() { netstat -taupln 2>/dev/null || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -524,7 +524,6 @@ open_filemanager() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 run_web_browser() {
   [ "$RUN_SERVER_ENABLE_WEB_BROWSER" = "yes" ] || [ "$RUN_SERVER_ENABLE_WEB_BROWSER" = "true" ] || return
-  . "$SCRIPTSFUNCTDIR/$SCRIPTSFUNCTFILE"
   open_browser "$RUN_SERVER_URL" &&
     export RUN_SERVER_BROWSER_PID="$!"
 }
@@ -552,22 +551,22 @@ __return_error() {
 __fmt_date() { date +"$1"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __lsof() {
-  lsof -i -nP | grep "${1:-$RUN_SERVER_PORT}" | grep -v 'grep' | grep -i "${prog:-python2}" | grep -q '^' && return 0 || return 1
+  lsof -i -nP | grep "${1:-$RUN_SERVER_PORT}" | grep -v 'grep' | grep -i "${prog:-python3}" | grep -q '^' && return 0 || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __port_used() {
-  sleep .1 && netstat -tauln 2>/dev/null | grep 'LISTEN' | grep ":${1:-$RUN_SERVER_PORT}" | grep -q '^' && return 0 || return 1
+  ss -tlnH 2>/dev/null | grep -q ":${1:-$RUN_SERVER_PORT}" && return 0 || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __port_free() {
-  sleep .1 && netstat -tauln 2>/dev/null | grep 'LISTEN' | grep ":${1:-$RUN_SERVER_PORT}" | grep -q '^' && return 1 || return 0
+  ss -tlnH 2>/dev/null | grep -q ":${1:-$RUN_SERVER_PORT}" && return 1 || return 0
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __proxy() {
   [ "$RUN_SERVER_IS_RUNNING" = "true" ] && return 0
   __cmd_exists caddy || return 1
   cd "$RUN_SERVER_CWD" || return 1
-  echo "$1" | grep -q ':[0-9]' && host="$1" || host="${CURRENT_IP_4:-127.0.0.1}:${1:-3000}"
+  [[ "$1" == *:[0-9]* ]] && host="$1" || host="${CURRENT_IP_4:-127.0.0.1}:${1:-3000}"
   caddy reverse-proxy --change-host-header --insecure --to $host --from :${2:-${RUN_SERVER_PORT:-20000}} &>>"$RUN_SERVER_LOG" || return 1 &&
     echo caddy started &>>"$RUN_SERVER_LOG" && other_port="$RUN_SERVER_LOG" || return 1
   return $?
@@ -601,7 +600,7 @@ __netcat_serv() {
   cd "$RUN_SERVER_CWD" || return 1
   while :; do
     file="$([ -f "index.html" ] && echo index.html || find "." -mindepth 1 -printf '%P\n' 2>/dev/null | head -n1 || echo 'Running')"
-    cat "$file" | $RUN_SERVER_NETCAT_BIN -l -p "$RUN_SERVER_PORT" &>>"$RUN_SERVER_LOG"
+    $RUN_SERVER_NETCAT_BIN -l -p "$RUN_SERVER_PORT" < "$file" &>>"$RUN_SERVER_LOG"
   done &>>"$RUN_SERVER_LOG" || return 1
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -764,7 +763,7 @@ __try_default() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __enable_function() {
   local set_enable
-  set_enable="$(echo "$1" | sed 's|^--||g' | awk -F '-' '{print $2}' | grep '^' | tr '[:upper:]' '[:lower:]')"
+  set_enable="${1##*-}"
   case "$set_enable" in
   browser)
     export RUN_SERVER_ENABLE_WEB_BROWSER="yes"
@@ -786,7 +785,7 @@ __enable_function() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __disable_function() {
   local set_disable
-  set_disable="$(echo "$1" | sed 's|^--||g' | awk -F '-' '{print $2}' | grep '^' | tr '[:upper:]' '[:lower:]')"
+  set_disable="${1##*-}"
   case "$set_disable" in
   browser)
     export RUN_SERVER_ENABLE_WEB_BROWSER="no"
@@ -824,7 +823,7 @@ __setup_directory() {
   fi
   RUN_SERVER_CWD="$(realpath "$RUN_SERVER_CWD" 2>/dev/null || echo "$RUN_SERVER_DEFAULT_DIR")"
   if [ "$RUN_SERVER_CWD" == "$HOME" ]; then
-    trap 'clear;__trap_exit_local;exit 1' SIGINT EXIT
+    trap 'printf "\033[2J\033[H";__trap_exit_local;exit 1' SIGINT EXIT
     printf '\033[2J\033[H'
     printf_newline '\n\n\n'
     printf_red "Running this in your HOME directory is not supported"
@@ -854,7 +853,11 @@ start_run_server() {
   export -f start_run_server __lsof __port_used open_browser open_editor open_filemanager
   printf '%s\n' "Attempting to start $prog on port $RUN_SERVER_PORT" &>"$RUN_SERVER_LOG"
   __run_server "$@"
-  sleep 5
+  local _tries=0
+  while ! __port_used && ((_tries < 20)); do
+    _tries=$((_tries + 1))
+    sleep 0.5
+  done
   RUN_SERVER_DAEMON="$(__get_daemon_name)"
   RUN_SERVER_SRV_PID="$(__get_server_pid || __get_server_prog "$RUN_SERVER_DAEMON" || echo '')"
   export RUN_SERVER_DAEMON="${RUN_SERVER_DAEMON:-$(__get_server_prog "$RUN_SERVER_SRV_PID" || echo '')}"
@@ -871,12 +874,8 @@ start_run_server() {
   run_editor
   run_filemanager
   run_web_browser
-  sleep 2
   # - - - - - - - - - - - - - - - - - - - - - - - - -
-  #if [ "$RUN_SERVER_ENABLE_WEB_BROWSER" != "yes" ]; then
-  sleep 5
   printf '\r%bServer appears to have started successfully:%b control-c to exit %b ' "${CYAN}" "${GREEN}" "${NC}"
-  #fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __initialize_app() {
@@ -887,55 +886,55 @@ __initialize_app() {
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ -n "$SSH_CONNECTION" ] || [ -n "$SCREEN_SESSION" ]; then
     { [ -n "$RUN_SERVER_OPEN_FILE_MANAGER_CMD" ]; } ||
-      { cmd_exists lf && RUN_SERVER_OPEN_FILE_MANAGER_CMD="lf"; } ||
-      { cmd_exists vifm && RUN_SERVER_OPEN_FILE_MANAGER_CMD="vifm"; } ||
-      { cmd_exists ranger && RUN_SERVER_OPEN_FILE_MANAGER_CMD="ranger"; } ||
-      { cmd_exists se && RUN_SERVER_OPEN_FILE_MANAGER_CMD="se"; } ||
-      { cmd_exists vim && RUN_SERVER_OPEN_FILE_MANAGER_CMD="vim"; }
-  elif cmd_exists myfilemanager; then
+      { __cmd_exists lf && RUN_SERVER_OPEN_FILE_MANAGER_CMD="lf"; } ||
+      { __cmd_exists vifm && RUN_SERVER_OPEN_FILE_MANAGER_CMD="vifm"; } ||
+      { __cmd_exists ranger && RUN_SERVER_OPEN_FILE_MANAGER_CMD="ranger"; } ||
+      { __cmd_exists se && RUN_SERVER_OPEN_FILE_MANAGER_CMD="se"; } ||
+      { __cmd_exists vim && RUN_SERVER_OPEN_FILE_MANAGER_CMD="vim"; }
+  elif __cmd_exists myfilemanager; then
     RUN_SERVER_OPEN_FILE_MANAGER_CMD="myfilemanager"
   elif [ -n "$FILEMANAGER" ]; then
     RUN_SERVER_OPEN_FILE_MANAGER_CMD="$FILEMANAGER"
-  elif cmd_exists "xdg-open"; then
+  elif __cmd_exists "xdg-open"; then
     RUN_SERVER_OPEN_FILE_MANAGER_CMD="xdg-open"
-  elif cmd_exists "open"; then
+  elif __cmd_exists "open"; then
     RUN_SERVER_OPEN_FILE_MANAGER_CMD="open"
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ -n "$SSH_CONNECTION" ] || [ -n "$SCREEN_SESSION" ]; then
     RUN_SERVER_BROWSER_ARGS=""
     { [ -n "$RUN_SERVER_OPEN_BROWSER_CMD" ]; } ||
-      { cmd_exists browsh && RUN_SERVER_OPEN_BROWSER_CMD="browsh"; } ||
-      { cmd_exists netrik && RUN_SERVER_OPEN_BROWSER_CMD="netrik"; } ||
-      { cmd_exists links2 && RUN_SERVER_OPEN_BROWSER_CMD="links2"; } ||
-      { cmd_exists links && RUN_SERVER_OPEN_BROWSER_CMD="links"; } ||
-      { cmd_exists lynx && RUN_SERVER_OPEN_BROWSER_CMD="lynx -accept_all_cookies"; } ||
-      { cmd_exists elinks && RUN_SERVER_OPEN_BROWSER_CMD="elinks"; } ||
-      { cmd_exists w3m && RUN_SERVER_OPEN_BROWSER_CMD="w3m"; } || return 1
-  elif cmd_exists mybrowser; then
+      { __cmd_exists browsh && RUN_SERVER_OPEN_BROWSER_CMD="browsh"; } ||
+      { __cmd_exists netrik && RUN_SERVER_OPEN_BROWSER_CMD="netrik"; } ||
+      { __cmd_exists links2 && RUN_SERVER_OPEN_BROWSER_CMD="links2"; } ||
+      { __cmd_exists links && RUN_SERVER_OPEN_BROWSER_CMD="links"; } ||
+      { __cmd_exists lynx && RUN_SERVER_OPEN_BROWSER_CMD="lynx -accept_all_cookies"; } ||
+      { __cmd_exists elinks && RUN_SERVER_OPEN_BROWSER_CMD="elinks"; } ||
+      { __cmd_exists w3m && RUN_SERVER_OPEN_BROWSER_CMD="w3m"; } || return 1
+  elif __cmd_exists mybrowser; then
     RUN_SERVER_OPEN_BROWSER_CMD="mybrowser"
   elif [ -n "$BROWSER" ]; then
     RUN_SERVER_OPEN_BROWSER_CMD="$BROWSER"
-  elif cmd_exists "xdg-open"; then
+  elif __cmd_exists "xdg-open"; then
     RUN_SERVER_OPEN_BROWSER_CMD="xdg-open"
-  elif cmd_exists "open"; then
+  elif __cmd_exists "open"; then
     RUN_SERVER_OPEN_BROWSER_CMD="open"
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
   if [ -n "$SSH_CONNECTION" ] || [ -n "$SCREEN_SESSION" ]; then
     { [ -n "$RUN_SERVER_OPEN_EDITOR_CMD" ]; } ||
-      { cmd_exists vim && RUN_SERVER_OPEN_EDITOR_CMD="vim"; } ||
-      { cmd_exists nvim && RUN_SERVER_OPEN_EDITOR_CMD="nvim"; } ||
-      { cmd_exists neovim && RUN_SERVER_OPEN_EDITOR_CMD="neovim"; } ||
-      { cmd_exists nano && RUN_SERVER_OPEN_EDITOR_CMD="nano"; } ||
-      { cmd_exists emacs && RUN_SERVER_OPEN_EDITOR_CMD="emacs"; }
-  elif cmd_exists myeditor; then
+      { __cmd_exists vim && RUN_SERVER_OPEN_EDITOR_CMD="vim"; } ||
+      { __cmd_exists nvim && RUN_SERVER_OPEN_EDITOR_CMD="nvim"; } ||
+      { __cmd_exists neovim && RUN_SERVER_OPEN_EDITOR_CMD="neovim"; } ||
+      { __cmd_exists nano && RUN_SERVER_OPEN_EDITOR_CMD="nano"; } ||
+      { __cmd_exists emacs && RUN_SERVER_OPEN_EDITOR_CMD="emacs"; }
+  elif __cmd_exists myeditor; then
     RUN_SERVER_OPEN_EDITOR_CMD="myeditor"
   elif [ -n "$EDITOR" ]; then
     RUN_SERVER_OPEN_EDITOR_CMD="$EDITOR"
-  elif cmd_exists "xdg-open"; then
+  elif __cmd_exists "xdg-open"; then
     RUN_SERVER_OPEN_EDITOR_CMD="xdg-open"
-  elif cmd_exists "open"; then
+  elif __cmd_exists "open"; then
     RUN_SERVER_OPEN_EDITOR_CMD="open"
   fi
   # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -946,7 +945,7 @@ __initialize_app() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __main__() {
-  trap 'clear;__trap_exit_local;exit 0' SIGINT
+  trap 'printf "\033[2J\033[H";__trap_exit_local;exit 0' SIGINT
   export RUN_SERVER_MAIN_PID="$$"
   RUN_SERVER_CONSOLE_CMD="start_run_server $*"
   RUN_SERVER_PORT="${RUN_SERVER_PORT:-$RUN_SERVER_DEFAULT_PORT}"
