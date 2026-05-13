@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122020-git
+##@Version           :  202605131700-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122020-git"
+VERSION="202605131700-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -2948,7 +2948,7 @@ Write a git commit message for the diff above.
 First line must use conventional commit format:
   type: short description
 Valid types: fix, feat, docs, refactor, chore, test, build, ci, perf, style, revert, security
-The description after "type: " must be at most 54 characters. No trailing period.
+The description after \"type: \" must be at most 54 characters. No trailing period.
 (Emoji bookends will be added around your description automatically — do not include them.)
 Optionally follow with a blank line and 2-5 bullet points (- each) explaining what changed and why.
 Output only the commit message, nothing else."
