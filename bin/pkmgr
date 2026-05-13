@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131000-git
+##@Version           :  202605131100-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -651,7 +651,7 @@ __pipecmd() {
 # Perl/CPAN functions
 __cpan_run() {
   local cpandir="" cpanconf="" cpanfile=""
-  cpan="$(type -P cpan 2>/dev/null | grep -v "$HOME" | grep '^' || return)"
+  cpan="$(type -P cpan 2>/dev/null | grep -v "$HOME" | grep '^')"
   if [[ -n "$cpan" ]]; then
     cpandir="$(__devnull2 sudo find /usr/share/perl* /usr/local/share/perl* -path '*/CPAN/Version.pm' | sed 's#/Version.pm##g' | head -n1)"
     cpanconf="https://raw.githubusercontent.com/casjay-base/centos/master/usr/share/perl5/CPAN/Config.pm"
@@ -666,7 +666,7 @@ __cpan_run() {
   fi
 }
 __cpan_remove() {
-  cpan="$(type -P cpan 2>/dev/null | grep -v "$HOME" | grep '^' || return)"
+  cpan="$(type -P cpan 2>/dev/null | grep -v "$HOME" | grep '^')"
   if [[ -n "$cpan" ]]; then
     sudo bash -c "$cpan --uninstall $*" 2>/dev/null || return 1
   fi
@@ -835,11 +835,18 @@ __go_remove() {
   [ -n "$packages" ] || printf_exit "Usage: $APPNAME go remove [package]" >&2
   export GOPATH="${GOPATH:-$HOME/.local/share/go}"
   # Clean removes object files from package source directories (ignore error)
+  local goos arch
+  goos="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64)          ost="${goos}_amd64" ;;
+    aarch64 | arm64) ost="${goos}_arm64" ;;
+    armv7l | armv6l) ost="${goos}_arm" ;;
+    *)               ost="${goos}_${arch}" ;;
+  esac
   for pkg in $packages; do
     go clean -i $pkg &>/dev/null
-    # Set local variables
-    [[ "$(uname -m)" == "x86_64" ]] && ost="$(uname)"
-    ost="${ost,,}_amd64" && cnt="${pkg//[^\/]/}"
+    cnt="${pkg//[^\/]/}"
     # Delete the source directory and compiled package directory(ies)
     if (("${#cnt}" == "2")); then
       rm -rf "${GOPATH%%:*}/src/${pkg%/*}"
@@ -888,14 +895,14 @@ __script_run_if_is_url() {
 __script_run() {
   if [ "$1" = "--script" ]; then
     shift 1
-    __script_run_if_is_url "$1"
+    __script_run_if_is_url "$1" || return 1
     __execute "$PKMGR_TEMP_FILE" "executing the script"
   elif [ "$1" = "--line" ]; then
     shift 1
-    __script_run_if_is_url "$1"
+    __script_run_if_is_url "$1" || return 1
     while read -r line; do __execute "$line" "$line"; done <"$PKMGR_TEMP_FILE"
   else
-    __script_run_if_is_url "$1"
+    __script_run_if_is_url "$1" || return 1
     "$PKMGR_TEMP_FILE"
   fi
   __rm_rf "$PKMGR_TEMP_FILE"
@@ -957,7 +964,9 @@ __dotfiles_run() {
   for f in "${file[@]}"; do
     if [ -n "$f" ]; then
       url="$dotfilesrepo_raw/$f.list"
-      __urlverify "$url" && __curl "$url" | tee -p -a "$PKMGR_TEMP_FILE" &>/dev/null || return 1
+      __urlverify "$url" || return 1
+      __curl "$url" | tee -p -a "$PKMGR_TEMP_FILE" &>/dev/null
+      [ "${PIPESTATUS[0]}" -eq 0 ] || return 1
     fi
   done
 }
