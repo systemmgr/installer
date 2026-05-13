@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122025-git
+##@Version           :  202605122035-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122025-git"
+VERSION="202605122035-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -330,6 +330,8 @@ __netstat() { netstat -taupln 2>/dev/null || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __number_test() { test -n "$1" && test -z "${1//[0-9]/}" && return 0 || return 1; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+__sleep() { read -r -t "${1:-1}" _ </dev/null; :; }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 __get_daemon_name() {
   __netstat | grep -F ":$RUN_SERVER_PORT" |
     grep -v 'TIME_WAIT' | awk -F'/' '{print $NF}' | sed 's| ||g;s|:.*||g'
@@ -543,7 +545,7 @@ __return_error() {
   printf '%s\n' "Failed to start server" &>>"$RUN_SERVER_LOG"
   printf_red "Failed to start the server"
   printf_cyan "Details can be found in: $RUN_SERVER_LOG"
-  sleep 2 && printf_pause "$APPNAME will now be killed"
+  __sleep 2 && printf_pause "$APPNAME will now be killed"
   kill -9 "$RUN_SERVER_MAIN_PID" &>/dev/null
   return 1
 }
@@ -727,7 +729,7 @@ __set_vars() {
       else
         printf_yellow "Attempting the next port: $((port + 1))"
         port=$((port + 1))
-        sleep .5
+        __sleep .5
       fi
     done
   fi
@@ -856,7 +858,7 @@ start_run_server() {
   local _tries=0
   while ! __port_used && ((_tries < 20)); do
     _tries=$((_tries + 1))
-    sleep 0.5
+    __sleep 0.5
   done
   RUN_SERVER_DAEMON="$(__get_daemon_name)"
   RUN_SERVER_SRV_PID="$(__get_server_pid || __get_server_prog "$RUN_SERVER_DAEMON" || echo '')"
