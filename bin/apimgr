@@ -41,7 +41,7 @@ export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Disables colorization
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # pipes fail
 set -o pipefail
@@ -97,7 +97,7 @@ __am_i_online() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   NC=""
   RESET=""
   BLACK=""
@@ -3919,7 +3919,7 @@ SHORTOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 GET_OPTIONS_NO="no-*"
 GET_OPTIONS_YES="yes-*"
-LONGOPTS="completions:,config,reset-config,debug,dir:,help,options,raw,version,force,"
+LONGOPTS="completions:,config,reset-config,debug,dir:,help,options,no-color,version,force,"
 LONGOPTS+="repo:,user:,org:,token:,official,title:,body:,state:,limit:,branch:,base:,tag:,format:,visibility:,api,provider:"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ARRAY="github gitlab gitea forgejo codeberg gitee pagure sourcehut onedev bitbucket docker ghcr glcr harbor quay cloudsmith artifactory nexus verify user org repo issue pr release tag image api"
@@ -3933,7 +3933,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$APPNAME" -- "$@" 2>/dev
 eval set -- "${setopts[@]}" 2>/dev/null
 while :; do
   case "$1" in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

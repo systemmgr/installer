@@ -146,7 +146,7 @@ ICON_WARN="[ ❗ ]"
 ICON_ERROR="[ ✖ ]"
 ICON_QUESTION="[ ❓ ]"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   unset -f __printf_color
   printf_color() { printf '%b' "$1" | tr -d '\t'; }
   __printf_color() { printf_color "$1"; }

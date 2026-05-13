@@ -228,7 +228,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_line "--force                         - Force operations, bypass safety checks"
   __printf_line "--all                           - Apply operations to all applicable items"
   __printf_line "--dir <directory>               - Set working directory"
@@ -2939,7 +2939,7 @@ while :; do
     shift 1
     INSTALL_ALL="true"
     ;;
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

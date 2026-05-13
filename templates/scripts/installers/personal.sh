@@ -32,7 +32,7 @@ export SCRIPTS_PREFIX="dfmgr"
 trap 'retVal=$?;trap_exit' ERR EXIT SIGINT
 #if [ ! -t 0 ] && { [ "$1" = --term ] || [ $# = 0 ]; }; then { [ "$1" = --term ] && shift 1 || true; } && TERMINAL_APP="TRUE" myterminal -e "$APPNAME $*" && exit || exit 1; fi
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Import functions

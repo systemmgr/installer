@@ -32,7 +32,7 @@ export SCRIPTS_PREFIX="dockermgr"
 # Set bash options
 trap 'retVal=$?;trap_exit' ERR EXIT SIGINT
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 set -o pipefail -o noglob
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Import functions

@@ -31,7 +31,7 @@ _screen-new_completion() {
   prev="${COMP_WORDS[$COMP_CWORD - 1]:-}"
   # Match ARRAY from script: a,attach,ls,list,kill,d,detach,edit
   local subcmds="a attach ls list kill d detach edit"
-  # Match LONGOPTS from script: completions:,config,reset,debug,dir:,help,name:,options,raw,version,silent,force
+  # Match LONGOPTS from script: completions:,config,reset,debug,dir:,help,name:,options,no-color,version,silent,force
   local longopts="--completions --config --reset --debug --dir --help --name --options --raw --version --silent --force"
   # Helper: get active sn-* session names without the sn- prefix
   __sn_sessions() { screen -ls 2>/dev/null | grep '\.sn-' | sed 's/.*\.sn-//;s/[[:space:]].*//'; }

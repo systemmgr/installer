@@ -34,7 +34,7 @@ USER_HOME="${USER_HOME:-$HOME}"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   __printf_color() { printf '%b' "$1\n" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
 else
   __printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1\n" "$(tput sgr0 2>/dev/null)"; }
@@ -68,7 +68,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -116,7 +116,7 @@ LSB_RELEASE="$(command -v lsb_release 2>/dev/null || command -v lsb-release 2>/d
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # if needed add getopts here
 SHORTOPTS=""
-LONGOPTS="debug,help,raw,version,options"
+LONGOPTS="debug,help,no-color,version,options"
 ARRAY="all arch name type"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # execute options (skip when sourced — caller handles its own args)
@@ -125,7 +125,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "detectostype" -- "$@" 2>
 eval set -- "${setopts}" #2>/dev/null
 while :; do
   case "$1" in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""
@@ -331,7 +331,7 @@ else
     export SCRIPT_OPTS="--debug"
     export _DEBUG="on"
     ;;
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     ;;

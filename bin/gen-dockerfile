@@ -42,7 +42,7 @@ export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Disables colorization
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # pipes fail
 set -o pipefail
@@ -110,7 +110,7 @@ __am_i_online() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   NC=""
   RESET=""
   BLACK=""
@@ -354,7 +354,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1520,7 +1520,7 @@ SETARGS=("${GEN_DOCKERFILE_NORMALIZED_ARGS[@]}")
 SHORTOPTS=""
 SHORTOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-LONGOPTS="completions:,config,debug,dir:,help,options,raw,version,silent,force,update"
+LONGOPTS="completions:,config,debug,dir:,help,options,no-color,version,silent,force,update"
 LONGOPTS+=",dockerfile,startup,nogit,template:,org:,user:,repo:,pkmgr"
 LONGOPTS+=",tag:,registry:,distro-name:,distro-version:,add-tags:,x11,init,ports"
 LONGOPTS+=",apache,nginx,mysql,postgres,php,application:"
@@ -1537,7 +1537,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$APPNAME" -- "${SETARGS[
 eval set -- "${setopts[@]}" 2>/dev/null
 while :; do
   case "$1" in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

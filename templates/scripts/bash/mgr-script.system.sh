@@ -42,7 +42,7 @@ export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Disables colorization
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # pipes fail
 set -o pipefail
@@ -98,7 +98,7 @@ __am_i_online() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   NC=""
   RESET=""
   BLACK=""
@@ -213,7 +213,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--help                          - Shows this message"
   __printf_line "--options                       - Shows all available options"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_line "--no                            - No options"
   __printf_line "--yes                           - Yes options"
   __printf_line ""
@@ -647,7 +647,7 @@ SHORTOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 GET_OPTIONS_NO="no-*"
 GET_OPTIONS_YES="yes-*"
-LONGOPTS="all,completions:,config,reset-config,debug,force,help,options,raw,version,"
+LONGOPTS="all,completions:,config,reset-config,debug,force,help,options,no-color,version,"
 LONGOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ARRAY="available,cron,download,install,list,remove,search,update,version"
@@ -661,7 +661,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$APPNAME" -- "$@" 2>/dev
 eval set -- "${setopts[@]}" 2>/dev/null
 while :; do
   case "$1" in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

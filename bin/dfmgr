@@ -90,7 +90,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_line "--dir <directory>               - Set working directory"
   __printf_line "--force                         - Force installation/operations"
   __printf_line "--list                          - List available configurations"
@@ -263,7 +263,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$APPNAME" -- "$@" 2>/dev
 eval set -- "${setopts[@]}" 2>/dev/null
 while :; do
   case $1 in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

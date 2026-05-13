@@ -41,7 +41,7 @@ export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$
 [ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Disables colorization
-[ "$1" = "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # pipes fail
 set -o pipefail
@@ -86,7 +86,7 @@ __am_i_online() {
 # Cache tput escapes at startup so every colored printf doesn't fork tput twice.
 declare -a _TPUT_FG=()
 _TPUT_RESET=""
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   NC=""
   RESET=""
   BLACK=""
@@ -327,7 +327,7 @@ __help() {
   __printf_line "--completions <long|short|array|list>"
   __printf_line "                                - Emit completions for shell wrappers"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--raw                           - Removes all formatting on output"
+  __printf_line "--no-color                           - Disable ANSI color output"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -2823,7 +2823,7 @@ SETARGS=("$@")
 SHORTOPTS="C"
 SHORTOPTS+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-LONGOPTS="completions:,config,debug,dir:,help,options,raw,version,silent"
+LONGOPTS="completions:,config,debug,dir:,help,options,no-color,version,silent"
 LONGOPTS+=",force,all,ask,filename:,arch:,release:,name:,test::"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ARRAY="aeryn,alma,alpine,arch,archcraft,bazzite,blackarch,cachy,centos,chimera,clonezilla,debian,endeavour,fedora,"
@@ -2838,7 +2838,7 @@ setopts=$(getopt -o "$SHORTOPTS" --long "$LONGOPTS" -n "$APPNAME" -- "$@" 2>/dev
 eval set -- "${setopts[@]}" 2>/dev/null
 while :; do
   case "$1" in
-  --raw)
+  --no-color)
     shift 1
     export SHOW_RAW="true"
     NC=""

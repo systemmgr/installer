@@ -42,7 +42,7 @@ printf_newline() {
   [[ -n "$1" ]] && printf '%b\n' "${*:-}" || printf '\n'
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   unset -f printf_color
   __printf_color() { printf_color "$1"; }
   printf_color() { printf '%b' "$1" | tr -d '\t'; }

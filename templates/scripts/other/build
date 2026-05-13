@@ -54,7 +54,7 @@ BUILD_LOG_DIR="${BUILD_LOG_FILE%/*}"                                            
 # Set bash options
 trap 'exitCode=${exitCode:-0};[ -n "$GEN_SCRIPT_REPLACE_ENV_TEMP_FILE" ] && [ -f "$GEN_SCRIPT_REPLACE_ENV_TEMP_FILE" ] && rm -Rf "$GEN_SCRIPT_REPLACE_ENV_TEMP_FILE" |&__devnull;exit ${exitCode:-0}' EXIT
 [ "$1" == "--debug" ] && set -xo pipefail && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
-[ "$1" == "--raw" ] && export SHOW_RAW="true"
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
 set -Eo pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set functions
@@ -95,7 +95,7 @@ __am_i_online() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # colorization
-if [ "$SHOW_RAW" = "true" ]; then
+if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   printf_color() { printf '%b\n' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
 else
   printf_color() { printf "%b\n" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
@@ -331,7 +331,7 @@ BUILD_SRC_URL=""
 # Set options
 SETARGS="$*"
 SHORTOPTS=""
-LONGOPTS="debug,force,help,options,raw,version"
+LONGOPTS="debug,force,help,options,no-color,version"
 ARRAY=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Setup application options
