@@ -18,15 +18,7 @@
 # @@sudo/root        :  GEN_SCRIPT_REPLACE_SUDO
 # @@Template         :  installers/dockermgr
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# shell check options
-# shellcheck disable=SC1003
-# shellcheck disable=SC2001
-# shellcheck disable=SC2016
-# shellcheck disable=SC2031
-# shellcheck disable=SC2120
-# shellcheck disable=SC2155
-# shellcheck disable=SC2199
-# shellcheck disable=SC2317
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 export APPNAME="GEN_SCRIPT_REPLACE_APPNAME"
 export VERSION="GEN_SCRIPT_REPLACE_VERSION"

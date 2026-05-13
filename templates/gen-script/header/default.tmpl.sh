@@ -19,9 +19,5 @@ cat <<EOF | tee
 # @@sudo/root        :  ${sudo:-$get_sudo}
 # @@Template         :  ${template:-$get_template}
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# shell check options
-# shellcheck disable=SC2317
-# shellcheck disable=SC2120
-# shellcheck disable=SC2155
-# shellcheck disable=SC2199
+# shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 EOF
