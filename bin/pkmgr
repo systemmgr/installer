@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122300-git
+##@Version           :  202605131000-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -758,15 +758,17 @@ __gem_remove() {
 __npm_run() {
   local packages="$*"
   local NODE_PATH="" PATH="${PATH}"
-  NODE_PATH="$(echo "$PATH" | tr ':' '\n' | grep 'node' | grep '/bin' || return)"
-  PATH="$NODE_PATH:$PATH"
+  NODE_PATH="$(echo "$PATH" | tr ':' '\n' | grep 'node' | grep '/bin')"
+  [ -n "$NODE_PATH" ] && PATH="$NODE_PATH:$PATH"
   [ -n "$packages" ] || printf_exit "Usage: $APPNAME node install [package]" >&2
   if __cmd_exists fnm; then
-    eval $(fnm env)
+    eval "$(fnm env)"
     fnm use default &>/dev/null
-    npm i -g $packages 2>/dev/null | grep -v '^$' || return 1
+    npm i -g $packages 2>/dev/null | grep -v '^$'
+    return ${PIPESTATUS[0]}
   elif __cmd_exists npm; then
-    npm install -g $packages 2>/dev/null | grep -v '^$' || return 1
+    npm install -g $packages 2>/dev/null | grep -v '^$'
+    return ${PIPESTATUS[0]}
   elif __cmd_exists yarn; then
     if [ "$USER" = "root" ]; then
       yarn global add $packages --prefix "/usr/local/bin"
@@ -780,15 +782,17 @@ __npm_run() {
 __npm_remove() {
   local packages="$*"
   local NODE_PATH="" PATH="${PATH}"
-  NODE_PATH="$(echo "$PATH" | tr ':' '\n' | grep 'node' | grep '/bin' || return)"
-  PATH="$NODE_PATH:$PATH"
+  NODE_PATH="$(echo "$PATH" | tr ':' '\n' | grep 'node' | grep '/bin')"
+  [ -n "$NODE_PATH" ] && PATH="$NODE_PATH:$PATH"
   [ -n "$packages" ] || printf_exit "Usage: $APPNAME node remove [package]" >&2
   if __cmd_exists fnm; then
-    eval $(fnm env)
+    eval "$(fnm env)"
     fnm use default &>/dev/null
-    npm remove -g $packages 2>/dev/null | grep -v '^$' || return 1
+    npm remove -g $packages 2>/dev/null | grep -v '^$'
+    return ${PIPESTATUS[0]}
   elif __cmd_exists npm; then
-    npm remove -g $packages 2>/dev/null | grep -v '^$' || return 1
+    npm remove -g $packages 2>/dev/null | grep -v '^$'
+    return ${PIPESTATUS[0]}
   elif __cmd_exists yarn; then
     if [ "$USER" = "root" ]; then
       yarn global remove "$*" --prefix "/usr/local/bin"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122200-git
+##@Version           :  202605131000-git
 # @Author            :  Jason Hempstead
 # @Contact           :  jason@casjaysdev.pro
 # @License           :  LICENSE.md
@@ -1095,7 +1095,7 @@ npm_exists() {
     return 0
   elif __cmd_exists yarn && yarn global list 2>/dev/null | grep -q "\"${package}@"; then
     return 0
-  elif __cmd_exists pnpm && pnpm list -g 2>/dev/null | grep -q "^${package} "; then
+  elif __cmd_exists pnpm && pnpm list -g 2>/dev/null | grep -q " ${package}[ @]"; then
     return 0
   fi
   return 1

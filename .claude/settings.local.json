@@ -159,7 +159,14 @@
       "Bash(gh gist *)",
       "Read(//root/.local/log/dockermgr/docker_io/casjaysdevdocker/**)",
       "Read(//root/.cache/dockermgr/**)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(pkmgr --help)",
+      "Bash(perl -MXML::Parser -e1)",
+      "Bash(pkmgr *)",
+      "Bash(rpm -q expat-devel)",
+      "Bash(dpkg -l libexpat-dev)",
+      "Bash(perl -MJSON::PP -e1)",
+      "Bash(perl -MText::CSV -e1)"
     ],
     "deny": [
       "Bash(git commit:*)",
