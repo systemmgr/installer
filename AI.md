@@ -215,6 +215,21 @@ Scripts in `bin/` are fully self-contained — no external functions file depend
   that needs them — never unconditionally at startup
 - `__sleep` must use `sleep N` — `read -t N _ </dev/null` is a no-op on EOF
 
+### Function inclusion rules
+
+Only inline functions the script actually calls. Never carry over boilerplate functions
+that the script does not use.
+
+- **Sudo functions** (`requiresudo`, `__sudo`, `__sudorun`, `__sudoif`, `__can_i_sudo`,
+  `__sudoask`, `__sudo_group`, `__user_is_root`, `__user_is_not_root`): include only if
+  the script body actually calls them. Verify by grepping the script — do not rely on the
+  `@@sudo/root` header field, which may be stale.
+- **Installer/manager helpers** (`user_install`, `__options`, and similar external-lib
+  entrypoints): never include — these belong to the external functions library, not to
+  individual scripts.
+- When migrating a script from sourced-lib to self-contained: audit every function defined
+  in the script, grep for its call sites, and drop any function with zero call sites.
+
 ---
 
 ## Color & NO_COLOR
@@ -292,3 +307,6 @@ Decisions and conventions established — not a work log.
 - **2026-05**: `gitcommit`: COMMIT_MESS presence triggers stage-all regardless of subcommand
 - **2026-05**: gen-header structural update: 4 header fields restored (@@Other, @@Resource,
   @@Terminal App, @@sudo/root); boilerplate aligned to bash/system template
+- **2026-05**: Self-contained migration rule: only inline functions the script calls; drop
+  sudo functions when not used (verify by grep, not header); never include user_install,
+  __options, or other external-lib entrypoints
