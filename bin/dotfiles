@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605131500-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -22,7 +22,7 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605131500-git"
 RUN_USER="$USER"
 SET_UID="$(id -u)"
 SCRIPT_SRC_DIR="${BASH_SOURCE%/*}"
@@ -80,72 +80,72 @@ config | stow)
 desktopmgr)
   shift 1
   desktopmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 devenvmgr)
   shift 1
   devenvmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 dfmgr)
   shift 1
   dfmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 dockermgr)
   shift 1
   dockermgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 fontmgr)
   shift 1
   fontmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 hakmgr)
   shift 1
   hakmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 iconmgr)
-  shist 1
+  shift 1
   iconmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 lxcmgr)
   shift 1
   lxcmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 passmgr)
   shift 1
   passmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 pkmgr)
   shift 1
   pkmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 systemmgr)
   shift 1
   systemmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 thememgr)
   shift 1
   thememgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 virtmgr)
   shift 1
   virtmgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 wallpapermgr)
   shift 1
   wallpapermgr "${@:---help}"
-  exit #?
+  exit $?
   ;;
 *)
   dfmgr "${@:---help}"

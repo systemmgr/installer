@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605122010-git
+##@Version           :  202605131500-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  git.io/casjay
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605122010-git"
+VERSION="202605131500-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1389,9 +1389,8 @@ __term() {
   local main sleeptime ENABLED START_STOP_MESG
   while :; do
     printf '\033[2J\033[H'
-    shift 1
     printf_newline "\n\n\n\n"
-    printf_head "Random Wall Paper Menu"
+    __printf_head "Random Wall Paper Menu"
     if [[ -f "$HOME/.config/autostart/randomwallpaper.desktop" ]]; then
       ENABLED="disable"
     else
