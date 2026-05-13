@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# shellcheck disable=SC2031
-# shellcheck disable=SC2317
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ##@Version           :  202602020740-git
 # @@Author           :  Jason Hempstead

@@ -14,9 +14,7 @@
 # @Other             :
 # @Resource          :
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# shellcheck disable=SC2125
-# shellcheck disable=SC2269
-# shellcheck disable=SC2295
+# shellcheck disable=SC2125,SC2269,SC2295
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 _gitadmin() {
   ___findcmd() { find -L "${1:-$CONFDIR/}" -maxdepth ${3:-3} -type ${2:-f} 2>/dev/null | sed 's#'${1:-$CONFDIR}'##g' | grep '^' || return 1; }
