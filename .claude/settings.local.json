@@ -167,7 +167,9 @@
       "Bash(dpkg -l libexpat-dev)",
       "Bash(perl -MJSON::PP -e1)",
       "Bash(perl -MText::CSV -e1)",
-      "Bash(systemmgr update *)"
+      "Bash(systemmgr update *)",
+      "Bash(pip uninstall *)",
+      "Bash(dfmgr update *)"
     ],
     "deny": [
       "Bash(git commit:*)",

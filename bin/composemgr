@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605051121-git
+##@Version           :  202605131200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1003,SC2016,SC2031,SC2120,SC2155,SC2199,SC2317,SC2329,SC2063
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605051121-git"
+VERSION="202605131200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -49,7 +49,7 @@ set -o pipefail
 # Import functions
 CASJAYSDEVDIR="${CASJAYSDEVDIR:-/usr/local/share/CasjaysDev/scripts}"
 SCRIPTSFUNCTDIR="${CASJAYSDEVDIR:-/usr/local/share/CasjaysDev/scripts}/functions"
-SCRIPTSFUNCTFILE="${SCRIPTSAPPFUNCTFILE:-testing.bash}"
+SCRIPTSFUNCTFILE="${SCRIPTSAPPFUNCTFILE:-mgr-installers.bash}"
 SCRIPTSFUNCTURL="${SCRIPTSAPPFUNCTURL:-https://github.com/dfmgr/installer/raw/main/functions}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 if [ -f "$PWD/$SCRIPTSFUNCTFILE" ]; then
@@ -250,13 +250,13 @@ networks:
 
 EOF
   fi
-  if [ ! -f "$COMPOSEMGR_CWD/.env.sample" ]; then
-    printf_cyan "Creating .env.sample"
-    curl -q -LSsf "https://github.com/composemgr/.github/raw/refs/heads/main/example/.env.sample" -O "$COMPOSEMGR_CWD/$COMPOSEMGR_DEFAULT_ENV_FILE.sample" 2>/dev/null
+  if [ ! -f "$COMPOSEMGR_CWD/$COMPOSEMGR_DEFAULT_ENV_FILE.sample" ]; then
+    printf_cyan "Creating $COMPOSEMGR_DEFAULT_ENV_FILE.sample"
+    curl -q -LSsf "https://github.com/composemgr/.github/raw/refs/heads/main/example/default.env.sample" -o "$COMPOSEMGR_CWD/$COMPOSEMGR_DEFAULT_ENV_FILE.sample" 2>/dev/null
   fi
   if [ ! -f "$COMPOSEMGR_CWD/app.env.sample" ]; then
     printf_cyan "Creating app.env.sample"
-    curl -q -LSsf "https://github.com/composemgr/.github/raw/refs/heads/main/example/app.env.sample" -O "$COMPOSEMGR_CWD/app.env.sample" 2>/dev/null
+    curl -q -LSsf "https://github.com/composemgr/.github/raw/refs/heads/main/example/app.env.sample" -o "$COMPOSEMGR_CWD/app.env.sample" 2>/dev/null
   fi
   if [ ! -f "$COMPOSEMGR_CWD/LICENSE.md" ]; then
     gen-license --dir "$COMPOSEMGR_CWD" wtfpl
@@ -731,6 +731,12 @@ BASE_DIR_DATABASES="${BASE_DIR_DATABASES:-}"
 
 EOF
         fi
+        [ -f "$workDir/$COMPOSEMGR_DEFAULT_ENV_FILE" ] && . "$workDir/$COMPOSEMGR_DEFAULT_ENV_FILE"
+        [ -f "$workDir/app.env" ] && . "$workDir/app.env"
+        if [ -x "$workDir/init.sh" ]; then
+          printf_cyan "Running init.sh for $repo_name"
+          bash "$workDir/init.sh"
+        fi
         exitCode=0
       else
         exitCode=1
@@ -752,10 +758,10 @@ EOF
         printf '%s\n%s\n\n' "# Ignore the file: $env" "$env" >>"$workDir/.gitignore"
       fi
     done
-    if ! grep -qsh "^volumes$" "workDir/.gitignore"; then
+    if ! grep -qsh "^volumes$" "$workDir/.gitignore"; then
       printf '%s\n%s\n\n' "# Exclude the volumes dir" "volumes" >>"$workDir/.gitignore"
     fi
-    if ! grep -qsh "^$COMPOSEMGR_DOCKER_COMPOSE_FILE_NAME$" "workDir/.gitignore"; then
+    if ! grep -qsh "^$COMPOSEMGR_DOCKER_COMPOSE_FILE_NAME$" "$workDir/.gitignore"; then
       printf '%s\n%s\n\n' "# Exclude $COMPOSEMGR_DOCKER_COMPOSE_FILE_NAME just in case it has sensitive data" "$COMPOSEMGR_DOCKER_COMPOSE_FILE_NAME" >>"$workDir/.gitignore"
     fi
   fi
@@ -937,7 +943,7 @@ __generate_nginx_proxy() {
   local exitCode=0
   local nginx_vhost_name="${1:-$BASE_HOST_NAME}"
   local nginx_proxy_url="${2:-$NGINX_PROXY_URL}"
-  local nginx_app_name="$(grep -sh 'container_name' "$COMPOSEMGR_CWD/docker-compose.yaml" | sed "s|.*container_name: ||g;s|\"||g;s||'|g")"
+  local nginx_app_name="$(grep -sh 'container_name' "$COMPOSEMGR_CWD/docker-compose.yaml" | sed "s|.*container_name: ||g;s|\"||g;s|'||g")"
   export NGINX_PROXY_URL="$nginx_proxy_url"
   __cmd_exists nginx || printf_exit "The command nginx was not found"
   __cmd_exists gen-nginx || printf_exit "The command gen-nginx was not found"
@@ -1067,7 +1073,7 @@ COMPOSEMGR_DEFAULT_ENV_FILE="${COMPOSEMGR_DEFAULT_ENV_FILE:-default.env}"
 COMPOSEMGR_ENV_ENABLED="${COMPOSEMGR_ENV_ENABLED:-yes}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 TZ="${TZ:-America/New_York}"
-BASE_DOMAIN_NAME="${BASE_DOMAIN_NAME:-$(hostname -d 2>/dev/null | grep '*.\.' | grep '^' || echo "$BASE_HOST_NAME")}"
+BASE_DOMAIN_NAME="${BASE_DOMAIN_NAME:-$(hostname -d 2>/dev/null | grep '\.' | grep '^' || echo "$BASE_HOST_NAME")}"
 BASE_HOST_NAME="${BASE_HOST_NAME:-$HOSTNAME}"
 BASE_DIR_STORAGE="${BASE_DIR_STORAGE:-/var/lib/srv/$USER/composemgr}"
 BASE_DIR_DATABASES="${BASE_DIR_DATABASES:-/var/lib/srv/$USER/composemgr}"
@@ -1145,7 +1151,7 @@ LONGOPTS="completions:,config,reset-config,debug,dir:,help,options,raw,version,s
 LONGOPTS+=",project:,name:,env,prod,devel"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ARRAY="install,remove,up,down,restart,ps,logs,network,cat,init,new,edit,show,get,env"
-ARRAY+="password,nginx,repo,backup,generate"
+ARRAY+=",password,nginx,repo,backup,generate"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 LIST="acme,affine,aria2,authentik,blinko,bluesky,borg,budibase,bytestash,caprover,clipcascade,code-server,coder,couchbase,couchdb,"
 LIST+="dockge,freeipa,garage,gitlab,guacamole,i2p,irc,it-tools,jenkins,jitsi,kestra,keycloak,kooboo,lenpaste,linkwarden,mariadb,mastadon,"
@@ -1320,7 +1326,7 @@ export COMPOSEMGR_CWD
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Check for required applications/Network check
 #requiresudo "$0" "$@" || exit 2     # exit 2 if errors
-cmd_exists --error --ask bash || exit 3 # exit 3 if not found
+__cmd_exists bash || exit 3 # exit 3 if not found
 #am_i_online --error || exit 4           # exit 4 if no internet
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # APP Variables overrides
@@ -1406,8 +1412,8 @@ network)
   ;;
 cat)
   shift 1
-  for yaml in "$COMPOSEMGR_CWD"/*.yaml "$COMPOSEMGR_CWD"/*.yaml; do
-    cat "$yml"
+  for yaml in "$COMPOSEMGR_CWD"/*.yaml "$COMPOSEMGR_CWD"/*.yml; do
+    cat "$yaml"
   done
   ;;
 new)
@@ -1442,7 +1448,7 @@ repo)
   push)
     shift 1
     if [ -d "$COMPOSEMGR_CWD/.git" ]; then
-      gitadmin --dir "$COMPOSEMGR_CWD" "pull"
+      gitadmin --dir "$COMPOSEMGR_CWD" "push"
     else
       gitadmin --dir "$COMPOSEMGR_CWD" setup
     fi
