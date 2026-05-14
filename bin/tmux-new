@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605131300-git
+##@Version           :  202605141300-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605131300-git"
+VERSION="202605141300-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -51,14 +51,14 @@ __devnull() {
   tee &>/dev/null && exitCode=0 || exitCode=1
   return ${exitCode:-0}
 }
-# - - - - - - - - - - - - - - - - - - - - - - - - -'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Send errors to /dev/null
 __devnull2() {
   [ -n "$1" ] && local cmd="$1" && shift 1 || return 1
   eval "$cmd" "$@" 2>/dev/null && exitCode=0 || exitCode=1
   return ${exitCode:-0}
 }
-# - - - - - - - - - - - - - - - - - - - - - - - - -'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # See if the executable exists
 __cmd_exists() {
   local exitCode=0
@@ -105,6 +105,7 @@ if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   printf_column() { tee | grep '^'; }
   printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
 else
+  printf_column() { tee | column -t; }
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -601,7 +602,7 @@ __tmux_kill_all() {
   # Recreate sessions
   if [ -n "$session_info" ]; then
     printf_cyan "Recreating sessions in background..."
-    echo -e "$session_info" | while IFS=: read -r session_type session_path; do
+    printf '%b\n' "$session_info" | while IFS=: read -r session_type session_path; do
       if [ -n "$session_path" ] && [ -d "$session_path" ]; then
         printf_blue "Recreating $session_type session in: $session_path"
         (cd "$session_path" && "$0" --dir "$session_path" --silent "$session_type" &>/dev/null &)
@@ -904,18 +905,31 @@ __tmux_cleanup_snapshots() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Background task loop: saves session state every N seconds while the tmux server is alive.
-# Writes a PID lockfile to avoid stacking multiple loops across invocations.
+# Guarantees at most one loop per socket. Uses mkdir as an atomic lock gate; the PID file
+# is a secondary artifact used only to detect and reclaim stale locks (dead process).
 __tmux_new_bg_tasks() {
   local save_script="$TMUX_NEW_PLUGIN_DIR/tmux-resurrect/scripts/save.sh"
   local interval="${TMUX_NEW_SAVE_INTERVAL:-300}"
-  local lock_file="$TMUX_NEW_TEMP_DIR/autosave.${TMUX_NEW_SOCKET_FILE:-default}.pid"
-  if [ -f "$lock_file" ] && kill -0 "$(<"$lock_file")" 2>/dev/null; then
-    return 0
+  local _sock="${TMUX_NEW_SOCKET_FILE:-default}"
+  local lock_dir="$TMUX_NEW_TEMP_DIR/autosave.${_sock}.lock"
+  local lock_file="$TMUX_NEW_TEMP_DIR/autosave.${_sock}.pid"
+  # Stale-lock reclaim: lock dir exists but the owning process is gone.
+  # Handles both normal crashes (PID file present, PID dead) and the rare
+  # mid-init window (lock dir present, no PID file yet → treat as stale).
+  if [ -d "$lock_dir" ]; then
+    local _pid
+    _pid="$(<"$lock_file" 2>/dev/null)"
+    if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+      return 0  # owner is alive — exactly one loop already running
+    fi
+    rm -rf "$lock_dir" "$lock_file" 2>/dev/null
   fi
+  # mkdir is POSIX-atomic: exactly one concurrent caller wins; all others return 0.
+  mkdir "$lock_dir" 2>/dev/null || return 0
   __tmux_apply_resurrect_dir
   (
-    echo "$BASHPID" >"$lock_file" 2>/dev/null
-    trap 'rm -f "$lock_file"' EXIT
+    printf '%s\n' "$BASHPID" >"$lock_file" 2>/dev/null
+    trap 'rm -rf "$lock_dir" "$lock_file"' EXIT
     while __sleep "$interval"; do
       __tmux list-sessions &>/dev/null || break
       __tmux_apply_resurrect_dir
@@ -1574,7 +1588,7 @@ while :; do
       exit $?
       ;;
     *)
-      printf_exit 1 1 "Unknown exec command: $1"
+      printf_exit "Unknown exec command: $1" 1
       ;;
     esac
     ;;
@@ -1764,6 +1778,7 @@ nested)
   exit $?
   ;;
 ai)
+  shift 1
   __init "${TMUX_NEW_SET_NAME:-ai-${TMUX_NEW_CWD##*/}}"
   __tmux_conf "ai" |& __devnull
   __create_windows "ai" "${1:-ai:$SHELL}" ${2:-} ${3:-} ${4:-} ${5:-} ${6:-} ${7:-} ${8:-} ${9:-} |& __devnull
@@ -1771,6 +1786,7 @@ ai)
   exit $?
   ;;
 single)
+  shift 1
   __init "${TMUX_NEW_SET_NAME:-single-${TMUX_NEW_CWD##*/}}"
   __tmux_conf "single" |& __devnull
   __create_windows "single" "${1:-main:$SHELL}" ${2:-} ${3:-} ${4:-} ${5:-} ${6:-} ${7:-} ${8:-} ${9:-} |& __devnull
@@ -1803,7 +1819,6 @@ server)
   ;;
 web)
   shift 1
-  run_server --silent source "$TMUX_NEW_TEMP_FILE" |& __devnull
   run_server --silent source "$TMUX_NEW_TEMP_FILE" |& __devnull
   if [ -f "$TMUX_NEW_TEMP_FILE" ]; then
     . "$TMUX_NEW_TEMP_FILE"

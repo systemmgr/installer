@@ -171,7 +171,8 @@
       "Bash(pip uninstall *)",
       "Bash(dfmgr update *)",
       "Bash(shellcheck -s bash /root/Projects/github/casjay-dotfiles/scripts/bin/cdd)",
-      "Bash(shellcheck -s bash /root/Projects/github/casjay-dotfiles/scripts/completions/_cdd_completions.bash)"
+      "Bash(shellcheck -s bash /root/Projects/github/casjay-dotfiles/scripts/completions/_cdd_completions.bash)",
+      "Bash(shellcheck --shell=bash /root/Projects/github/casjay-dotfiles/scripts/bin/tmux-new)"
     ],
     "deny": [
       "Bash(git commit:*)",
