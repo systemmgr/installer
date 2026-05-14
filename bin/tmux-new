@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605141300-git
+##@Version           :  202605141420-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -10,7 +10,7 @@
 # @@Created          :  Sunday, Aug 28, 2022 20:25 EDT
 # @@File             :  tmux-new
 # @@Description      :  Launch a new tmux session with config
-# @@Changelog        :  state-file fallback for crash recovery, resurrect-dir unified to sessions/, autosave always runs, rename autosave→bg_tasks, exec tmux attach, fix retVal/eval/quoting bugs
+# @@Changelog        :  remove resurrect save.sh from bg loop (stops constant Saving messages), fix ARRAY liskill typo, fix shell case missing exit, fix --no-color help padding, remove emoji from output
 # @@TODO             :  Better documentation
 # @@Other            :
 # @@Resource         :
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605141300-git"
+VERSION="202605141420-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -279,7 +279,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--no-color                           - Disable ANSI color output"
+  __printf_line "--no-color                      - Disable ANSI color output"
   __printf_line "--socket <name>                 - use a non-default tmux socket (-L name)"
   __printf_line "--name <session-name>           - override the auto-derived session name"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -781,9 +781,28 @@ __launch_tmux() {
       __tmux_apply_resurrect_dir
       __tmux_new_bg_tasks
       rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
+    elif [ "$server_is_up" = "true" ]; then
+      # Server is up (restored sessions exist) but not under our expected name —
+      # prefer attaching to the most-recently-used restored session over creating
+      # an empty new one.
+      local _fallback_sess
+      _fallback_sess=$(__tmux list-sessions -F "#{session_last_attached} #{session_name}" 2>/dev/null \
+        | sort -rn | head -1 | cut -d' ' -f2-)
+      if [ -n "$_fallback_sess" ]; then
+        printf_green "Attaching to restored session $_fallback_sess"
+        TMUX_NEW_NAME="$_fallback_sess"
+        __tmux_apply_resurrect_dir
+        __tmux_new_bg_tasks
+        rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
+      else
+        printf_cyan "Starting new tmux environment for $TMUX_NEW_NAME"
+        __tmux -f "$TMUX_NEW_FILE_CONF/$TMUX_NEW_NAME" new-session -d -s "$TMUX_NEW_NAME" "tmux source-file $TMUX_NEW_FILE_WINDOWS/$TMUX_NEW_NAME" &>"$TMUX_NEW_LOG_DIR/$APPNAME.log"
+        __tmux_apply_resurrect_dir
+        __tmux_new_bg_tasks
+        rm -f "$TMUX_NEW_TEMP_FILE" 2>/dev/null
+      fi
     else
       printf_cyan "Starting new tmux environment for $TMUX_NEW_NAME"
-      [ "$server_is_up" = "true" ] || __sleep 3
       __tmux -f "$TMUX_NEW_FILE_CONF/$TMUX_NEW_NAME" new-session -d -s "$TMUX_NEW_NAME" "tmux source-file $TMUX_NEW_FILE_WINDOWS/$TMUX_NEW_NAME" &>"$TMUX_NEW_LOG_DIR/$APPNAME.log"
       __tmux_apply_resurrect_dir
       __tmux_new_bg_tasks
@@ -841,7 +860,8 @@ __tmux_restore_from_state() {
   while IFS=$'\t' read -r sess win_idx win_name pane_idx pane_path cmd; do
     [ -n "$sess" ] || continue
     if ! __tmux has-session -t "=$sess" 2>/dev/null; then
-      __tmux new-session -d -s "$sess" -c "$pane_path" 2>/dev/null || continue
+      [ -d "$pane_path" ] || pane_path="$HOME"
+      __tmux new-session -d -s "$sess" -n "$win_name" -c "$pane_path" 2>/dev/null || continue
     fi
     if ! __tmux list-windows -t "=$sess" -F "#{window_index}" 2>/dev/null | grep -qx "$win_idx"; then
       __tmux new-window -t "=$sess" -n "$win_name" -c "$pane_path" 2>/dev/null
@@ -908,7 +928,6 @@ __tmux_cleanup_snapshots() {
 # Guarantees at most one loop per socket. Uses mkdir as an atomic lock gate; the PID file
 # is a secondary artifact used only to detect and reclaim stale locks (dead process).
 __tmux_new_bg_tasks() {
-  local save_script="$TMUX_NEW_PLUGIN_DIR/tmux-resurrect/scripts/save.sh"
   local interval="${TMUX_NEW_SAVE_INTERVAL:-300}"
   local _sock="${TMUX_NEW_SOCKET_FILE:-default}"
   local lock_dir="$TMUX_NEW_TEMP_DIR/autosave.${_sock}.lock"
@@ -930,10 +949,10 @@ __tmux_new_bg_tasks() {
   (
     printf '%s\n' "$BASHPID" >"$lock_file" 2>/dev/null
     trap 'rm -rf "$lock_dir" "$lock_file"' EXIT
+    __tmux_save_state
     while __sleep "$interval"; do
       __tmux list-sessions &>/dev/null || break
       __tmux_apply_resurrect_dir
-      [ -x "$save_script" ] && "$save_script" >/dev/null 2>&1 || true
       __tmux_save_state
       __tmux_cleanup_snapshots quiet
     done
@@ -1095,10 +1114,10 @@ __update_all_configs() {
       printf_blue "Updating config for session: $session_name"
       if cp -f "$TMUX_NEW_CONFIG_DIR/template" "$config_file" 2>/dev/null; then
         sed -i "s|TMUX_NEW_CONF_FILE_MAIN|${TMUX_NEW_FILE_CONF}/${session_name}|g; s|TMUX_NEW_CONF_FILE_LOCAL|${TMUX_NEW_FILE_CONF_LOCAL}/${session_name}|g" "$config_file"
-        printf_green "✓ Updated: $session_name"
+        printf_green "Updated: $session_name"
         updated=$((updated + 1))
       else
-        printf_red "✗ Failed: $session_name"
+        printf_red "Failed: $session_name"
         failed=$((failed + 1))
       fi
     done
@@ -1152,7 +1171,7 @@ __tmux_rename() {
 
   if __tmux has-session -t "$old_name" 2>/dev/null; then
     __tmux rename-session -t "$old_name" "$new_name"
-    printf_green "✅ Session '$old_name' renamed to '$new_name'"
+    printf_green "Session '$old_name' renamed to '$new_name'"
     return $?
   else
     printf_red "Session '$old_name' does not exist"
@@ -1163,7 +1182,7 @@ __tmux_rename() {
 __tmux_status() {
   local sessions="$(__tmux_list)"
   if [ -n "$sessions" ]; then
-    printf_blue "📊 Active tmux sessions:"
+    printf_blue "Active tmux sessions:"
     while IFS= read -r session; do
       local info="$(__tmux display-message -p -t "$session" '#{session_name}: #{session_windows} windows, #{session_attached} clients' 2>/dev/null)"
       [ -n "$info" ] && printf_green "  $info" || printf_yellow "  $session: (info unavailable)"
@@ -1299,7 +1318,7 @@ __tmux_clone() {
     cp "$TMUX_NEW_FILE_CONF/$source" "$TMUX_NEW_FILE_CONF/$target"
     cp "$TMUX_NEW_FILE_WINDOWS/$source" "$TMUX_NEW_FILE_WINDOWS/$target"
     __launch_tmux "$target"
-    printf_green "✅ Session '$source' cloned to '$target'"
+    printf_green "Session '$source' cloned to '$target'"
   else
     printf_red "Cannot clone - config files not found for '$source'"
     return 1
@@ -1369,7 +1388,7 @@ EOF
 
   if [ -n "$TMUX" ]; then
     # We're inside tmux - create nested session
-    printf_blue "🔗 Creating nested tmux session: $session_name"
+    printf_blue "Creating nested tmux session: $session_name"
 
     # Disable status bar on current (outer) session
     __tmux set -g status off
@@ -1379,10 +1398,10 @@ EOF
     __tmux send-keys -t "$session_name" "tmux -f '$nested_config' attach" Enter
     __tmux switch-client -t "$session_name"
 
-    printf_green "✅ Nested session created with single status bar"
+    printf_green "Nested session created with single status bar"
   else
     # Not in tmux - create normal session that supports nesting
-    printf_blue "🚀 Creating tmux session with nested support: $session_name"
+    printf_blue "Creating tmux session with nested support: $session_name"
     __tmux -f "$nested_config" new-session -D -A -s "$session_name" -c "$TMUX_NEW_CWD"
   fi
 
@@ -1485,7 +1504,7 @@ SHORTOPTS+=""
 LONGOPTS="completions:,config,debug,dir:,help,options,no-color,version,silent"
 LONGOPTS+=",kill,name:,socket:,exec:"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-ARRAY="liskill,clean,list,attach,single,shell,server,web,docker,dev,rpm,node,bun,deno,build,ssh,productivity,test,default,edit,create,save,restore,boot,cleanup,show,status,switch,rename,clone,nested,kill,update"
+ARRAY="clean,list,attach,single,shell,server,web,docker,dev,rpm,node,bun,deno,build,ssh,productivity,test,default,edit,create,save,restore,boot,cleanup,show,status,switch,rename,clone,nested,kill,update"
 ARRAY+=""
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 LIST=""
@@ -1799,6 +1818,7 @@ shell)
   __tmux_conf "shell" |& __devnull
   __create_windows "shell" "${1:-main:$SHELL}" ${2:-} ${3:-} ${4:-} ${5:-} ${6:-} ${7:-} ${8:-} ${9:-} |& __devnull
   __launch_tmux "shell"
+  exit $?
   ;;
 server)
   shift 1
