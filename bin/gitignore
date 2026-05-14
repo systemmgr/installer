@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202602020740-git
+##@Version           :  202605141300-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202602020740-git"
+VERSION="202605141300-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -469,13 +469,15 @@ __failedignore() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __default_ignore() {
-  if __line_does_not_exist "# OS generated files" "$GITIGNORE_CWD/.gitignore"; then
-    cat <<'OEF'
+  # Output everything unconditionally — __filter_duplicates handles per-line deduplication.
+  cat <<'OEF'
 # OS generated files
+
 ### Linux ###
+# Backup files left by editors
 *~
 
-# temporary files which can be created if a process still has a handle open of a deleted file
+# Temporary files left when a process holds an open handle to a deleted file
 .fuse_hidden*
 
 # KDE directory preferences
@@ -484,11 +486,11 @@ __default_ignore() {
 # Linux trash folder which might appear on any partition or disk
 .Trash-*
 
-# .nfs files are created when an open file is removed but is still being accessed
+# NFS stale file handles
 .nfs*
 
 ### macOS ###
-# General
+.DS_Store
 .DS_Store?
 .AppleDouble
 .LSOverride
@@ -512,19 +514,22 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
-### macOS Patch ###
 # iCloud generated files
 *.icloud
 
 ### Windows ###
-# Windows thumbnail cache files
 Thumbs.db
 Thumbs.db:encryptable
 ehthumbs.db
 ehthumbs_vista.db
 
-# Dump file
+# Crash dump files
 *.stackdump
+
+# Core dumps (Linux/macOS)
+core
+core.*
+vgcore.*
 
 # Folder config file
 [Dd]esktop.ini
@@ -539,20 +544,148 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
-# misc
-!*/README*
-!inc/main.bash
-
 # Windows shortcuts
 *.lnk
 
-# ignore commit message
+### Editors ###
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains IDEs (IntelliJ, GoLand, RustRover, PyCharm, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim / Neovim
+*.swp
+*.swo
+.netrwhist
+Session.vim
+.vim/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Eclipse / generic Java IDEs
+.project
+.classpath
+.factorypath
+.settings/
+
+### AI tool local configs (personal settings, never commit) ###
+# Claude Code
+.claude/settings.local.json
+
+# Cursor
+.cursor/
+.cursorignore
+.cursorindexingignore
+
+# GitHub Copilot
+.copilot/
+
+# Codeium
+.codeium/
+
+# Tabnine
+.tabnine/
+
+# Aider
+.aider/
+.aider.conf.yml
+.aider.model.settings.yml
+.aiderignore
+
+# General AI assistant local state
+.ai/
+.ai.local/
+
+### Environment and secrets ###
+# Local env overrides — never commit credentials
+.env
+.env.local
+.env.*.local
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+### Build artifacts ###
+build/
+dist/
+out/
+
+# Rust
+target/
+
+# C / C++ / compiled objects
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+### Dependency directories ###
+# Node
+node_modules/
+
+# Go (vendored deps are sometimes committed intentionally, so gitignore only the cache)
+# vendor/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+### Logs ###
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Temporary and cache ###
+tmp/
+.tmp/
+*.tmp
+*.cache
+.cache/
+
+### Test and coverage ###
+coverage/
+.coverage
+*.cover
+*.coverprofile
+htmlcov/
+.nyc_output/
+.pytest_cache/
+.tox/
+
+### Misc — always allow ###
+!*/README*
+!inc/main.bash
+
+### Project-specific patterns ###
+# ignore commit message files
 **/.gitcommit
 
 # ignore .build_failed files
 **/.build_failed*
 
-# ignore .bak files
+# ignore backup files
 **/*.bak
 
 # ignore .no_push files
@@ -561,20 +694,19 @@ $RECYCLE.BIN/
 # ignore .no_git files
 **/.no_git
 
-# ignore .installed files
+# ignore .installed marker files
 **/.installed
 
-# ignore work in progress files
+# ignore work-in-progress rewrite/refactor scripts
 **/*.rewrite.sh
 **/*.refactor.sh
-OEF
 
-  fi
-  if __line_exists ' ignore.*commit.*message' "$GITIGNORE_CWD/.gitignore"; then
-    return 0
-  else
-    return 1
-  fi
+# ignore local override scripts and configs
+**/*.local.sh
+**/*.local.conf
+**/*.local.yaml
+**/*.local.yml
+OEF
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ignore_list() {
