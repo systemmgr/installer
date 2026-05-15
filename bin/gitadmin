@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151100-git
+##@Version           :  202605151130-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151100-git"
+VERSION="202605151130-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -2085,6 +2085,7 @@ __bitbucket_workspace_clone_repos() {
       else
         printf_red "❌ Failed to clone: $workspace/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -2226,6 +2227,7 @@ __codeberg_owner_clone_repos() {
       else
         printf_red "❌ Failed to clone: $owner/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -2383,6 +2385,7 @@ __forgejo_owner_clone_repos() {
       else
         printf_red "❌ Failed to clone: $owner/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -2542,6 +2545,7 @@ __gitea_owner_clone_repos() {
       else
         printf_red "❌ Failed to clone: $owner/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -2701,6 +2705,7 @@ __gogs_owner_clone_repos() {
       else
         printf_red "❌ Failed to clone: $owner/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -2861,6 +2866,7 @@ __azure_project_clone_repos() {
       else
         printf_red "❌ Failed to clone: $project/$repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -3002,6 +3008,7 @@ __aws_clone_all_repos() {
       else
         printf_red "❌ Failed to clone: $repo"
         exitCode=$((exitCode + 1))
+        __cleanup_empty_dir "$repo_dir"
       fi
     fi
   done
@@ -3119,6 +3126,7 @@ __backup_repos() {
       rm -Rf "${GITADMIN_BACKUP_DIR:?}/$org_name/$repo_name"
       mkdir -p "$GITADMIN_BACKUP_DIR/$org_name/$repo_name"
       [ -d "$d/.git" ] && git clone -q "$d" "$GITADMIN_BACKUP_DIR/$org_name/$repo_name"
+      __cleanup_empty_dir "$GITADMIN_BACKUP_DIR/$org_name/$repo_name"
       printf_green "✅ Backup completed"
     fi
   done
@@ -4371,6 +4379,7 @@ __make_newsite() {
     printf_pause "Prease any key when you are done."
     gitadmin --dir "$site_dir/$site_folder" setup
   else
+    __cleanup_empty_dir "$site_dir/$site_folder"
     printf_error "Failed to clone $GITADMIN_DOMAIN_TEMPLATE"
     false
   fi
@@ -8661,6 +8670,7 @@ github)
       mkdir -p "$homerepo"
       __git_clone_single "$remote_repo" "$homerepo"
       retVal=$?
+      [ "$retVal" -ne 0 ] && __cleanup_empty_dir "$homerepo"
     fi
     [ -d "$homerepo/.git" ] && __cd_into "$homerepo" || printf_exit 1 1 "failed to clone to $homerepo"
     exit "$retVal"
@@ -8899,6 +8909,7 @@ gitlab)
       mkdir -p "$homerepo"
       __git_clone "$remote_repo" "$homerepo"
       retVal=$?
+      [ "$retVal" -ne 0 ] && __cleanup_empty_dir "$homerepo"
     fi
     __clone_success $retVal "$homerepo"
     [ -d "$homerepo/.git" ] && __cd_into "$homerepo" || printf_exit 1 1 "failed to clone to: $homerepo"
@@ -9020,6 +9031,7 @@ private)
       mkdir -p "$homerepo"
       __git_clone "$remote_repo" "$homerepo"
       retVal=$?
+      [ "$retVal" -ne 0 ] && __cleanup_empty_dir "$homerepo"
     fi
     __clone_success $retVal "$homerepo"
     [ -d "$homerepo/.git" ] && __cd_into "$homerepo" || printf_exit 1 1 "failed to initialize $homerepo"
@@ -9173,7 +9185,12 @@ private)
       else
         git -q -C "$GITADMIN_CWD" clone -q "$GITADMIN_PRIVATE_GIST_SERVER/$1" "$GITADMIN_PRIVATE_GIST_DIR/$1"
       fi
-      [ -d "$GITADMIN_PRIVATE_GIST_DIR/$1/.git" ] && printf_green "Cloned $GITADMIN_PRIVATE_GIST_SERVER/$1 to $GITADMIN_PRIVATE_GIST_DIR/$1" || printf_exit "Failed to clone"
+      if [ -d "$GITADMIN_PRIVATE_GIST_DIR/$1/.git" ]; then
+        printf_green "Cloned $GITADMIN_PRIVATE_GIST_SERVER/$1 to $GITADMIN_PRIVATE_GIST_DIR/$1"
+      else
+        __cleanup_empty_dir "$GITADMIN_PRIVATE_GIST_DIR/$1"
+        printf_exit "Failed to clone"
+      fi
       ;;
     esac
     ;;
