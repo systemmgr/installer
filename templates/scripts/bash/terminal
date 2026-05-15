@@ -24,7 +24,7 @@
 set -o pipefail
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Reopen in a terminal
-if [ ! -t 0 ] && { [ "$1" = --term ] || [ $# = 0 ]; }; then { [ "$1" = --term ] && shift 1 || true; } && TERMINAL_APP="TRUE" myterminal -e "$APPNAME $*" && exit || exit 1; fi
+if [ ! -t 0 ] && { [ "$1" = --term ] || [ $# -eq 0 ]; }; then { [ "$1" = --term ] && shift 1 || true; } && TERMINAL_APP="TRUE" myterminal -e "${0##*/} $*" && exit || exit 1; fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set script title
 #CASJAYS_DEV_TITLE_FORMAT="${USER}@${HOSTNAME}:${PWD/#$HOME/~} - ${0##*/}"
