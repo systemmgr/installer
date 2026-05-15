@@ -28,6 +28,8 @@ SET_UID="${UID}"
 SCRIPT_SRC_DIR="${BASH_SOURCE%/*}"
 GEN_SCRIPT_REPLACE_ENV_CWD="${PWD}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+trap '' EXIT
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # script functions
 if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
   __printf_color() { printf '%s\n' "$1"; }

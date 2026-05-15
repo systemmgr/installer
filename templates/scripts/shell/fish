@@ -18,6 +18,8 @@
 # @@sudo/root        :  GEN_SCRIPT_REPLACE_SUDO
 # @@Template         :  shell/fish
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+trap '' EXIT
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
 set -g APPNAME (path basename (status filename))
 set -g VERSION GEN_SCRIPT_REPLACE_VERSION
