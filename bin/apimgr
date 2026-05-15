@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605040132-git
+##@Version           :  202605151400-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605040132-git"
+VERSION="202605151400-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -254,8 +254,8 @@ __help() {
   __printf_line "--title TEXT, --body TEXT       - For create-issue / create-pr"
   __printf_line "--state open|closed|all         - Filter for list operations"
   __printf_line "--limit N                       - Cap result count (default 30)"
-  __printf_line "--branch NAME                   - Source branch for `pr create` (the branch the PR is from)"
-  __printf_line "--base NAME                     - Target/base branch for `pr create` (defaults to repo's default_branch)"
+  __printf_line "--branch NAME                   - Source branch for \`pr create\` (the branch the PR is from)"
+  __printf_line "--base NAME                     - Target/base branch for \`pr create\` (defaults to repo's default_branch)"
   __printf_line "--format json|table             - Output format (default: table for terminals, json otherwise)"
   __printf_line "--api PATH                      - Raw GET against an arbitrary API path (debug / one-off use)"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -684,8 +684,8 @@ __github_curl() {
   local token; token="$(__apimgr_provider_token github)" || return 1
   __apimgr_curl -H "Authorization: Bearer $token" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"
 }
-__github_api()  { local base; base="$(__apimgr_provider_url github)" || return 1; __github_curl -X "${1:-GET}" "$base$2"; }
-__github_post() { local base; base="$(__apimgr_provider_url github)" || return 1; __github_curl -X "${1:-POST}" --data "$3" "$base$2"; }
+__github_api()  { local base; base="$(__apimgr_provider_url github)" || return 1; __github_curl -X "${1:-GET}" "${base%/}/${2#/}"; }
+__github_post() { local base; base="$(__apimgr_provider_url github)" || return 1; __github_curl -X "${1:-POST}" --data "$3" "${base%/}/${2#/}"; }
 
 __github_verify() {
   __apimgr_require_creds github
@@ -927,9 +927,9 @@ __gitea_api() {
   local provider="$1" method="$2" path="$3" data="$4"
   local base; base="$(__apimgr_provider_url "$provider")" || return 1
   if [ -n "$data" ]; then
-    __gitea_curl "$provider" -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __gitea_curl "$provider" -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __gitea_curl "$provider" -X "$method" "$base$path"
+    __gitea_curl "$provider" -X "$method" "${base%/}/${path#/}"
   fi
 }
 __gitea_verify() {
@@ -1181,9 +1181,9 @@ __gitlab_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url gitlab)" || return 1
   if [ -n "$data" ]; then
-    __gitlab_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __gitlab_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __gitlab_curl -X "$method" "$base$path"
+    __gitlab_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 __gitlab_verify() {
@@ -1434,9 +1434,9 @@ __bitbucket_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url bitbucket)" || return 1
   if [ -n "$data" ]; then
-    __bitbucket_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __bitbucket_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __bitbucket_curl -X "$method" "$base$path"
+    __bitbucket_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Bitbucket list responses wrap data in {values:[]}; this unwraps so the shared formatters see a bare array.
@@ -1668,8 +1668,8 @@ __gitee_curl() {
   local token; token="$(__apimgr_provider_token gitee)" || return 1
   __apimgr_curl -H "Authorization: token $token" -H "Accept: application/json" "$@"
 }
-__gitee_api()  { local base; base="$(__apimgr_provider_url gitee)" || return 1; __gitee_curl -X "${1:-GET}" "$base$2"; }
-__gitee_post() { local base; base="$(__apimgr_provider_url gitee)" || return 1; __gitee_curl -X "${1:-POST}" -H "Content-Type: application/json" --data "$3" "$base$2"; }
+__gitee_api()  { local base; base="$(__apimgr_provider_url gitee)" || return 1; __gitee_curl -X "${1:-GET}" "${base%/}/${2#/}"; }
+__gitee_post() { local base; base="$(__apimgr_provider_url gitee)" || return 1; __gitee_curl -X "${1:-POST}" -H "Content-Type: application/json" --data "$3" "${base%/}/${2#/}"; }
 __gitee_repo_check() { __apimgr_resolve_repo || __apimgr_die "gitee: --repo USER/REPO required"; }
 __gitee_verify() {
   __apimgr_require_creds gitee
@@ -1875,9 +1875,9 @@ __pagure_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url pagure)" || return 1
   if [ -n "$data" ]; then
-    __pagure_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __pagure_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __pagure_curl -X "$method" "$base$path"
+    __pagure_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 __pagure_repo_check() { __apimgr_resolve_repo || __apimgr_die "pagure: --repo NAMESPACE/REPO required"; }
@@ -2101,9 +2101,9 @@ __sourcehut_api() {
   local service="$1" method="$2" path="$3" data="$4"
   local base; base="$(__sourcehut_service_url "$service")" || return 1
   if [ -n "$data" ]; then
-    __sourcehut_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __sourcehut_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __sourcehut_curl -X "$method" "$base$path"
+    __sourcehut_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 __sourcehut_print_repo_list() {
@@ -2193,9 +2193,9 @@ __onedev_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url onedev)" || return 1
   if [ -n "$data" ]; then
-    __onedev_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __onedev_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __onedev_curl -X "$method" "$base$path"
+    __onedev_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Resolve a project name (or USER/REPO path) to a numeric id. Cached in APIMGR_ONEDEV_PROJECT_ID for
@@ -2327,9 +2327,9 @@ __docker_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url docker)" || return 1
   if [ -n "$data" ]; then
-    __docker_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __docker_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __docker_curl -X "$method" "$base$path"
+    __docker_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Decode the username field from the cached JWT payload. Used as a default namespace for `repo list` / `user get`
@@ -2434,8 +2434,8 @@ __ghcr_curl() {
   local token; token="$(__apimgr_provider_token ghcr)" || return 1
   __apimgr_curl -H "Authorization: Bearer $token" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "$@"
 }
-__ghcr_api()  { local base; base="$(__apimgr_provider_url ghcr)" || return 1; __ghcr_curl -X "${1:-GET}" "$base$2"; }
-__ghcr_post() { local base; base="$(__apimgr_provider_url ghcr)" || return 1; __ghcr_curl -X "${1:-POST}" -H "Content-Type: application/json" --data "$3" "$base$2"; }
+__ghcr_api()  { local base; base="$(__apimgr_provider_url ghcr)" || return 1; __ghcr_curl -X "${1:-GET}" "${base%/}/${2#/}"; }
+__ghcr_post() { local base; base="$(__apimgr_provider_url ghcr)" || return 1; __ghcr_curl -X "${1:-POST}" -H "Content-Type: application/json" --data "$3" "${base%/}/${2#/}"; }
 # ghcr-shaped formatters (different field names from Hub: .name, .owner.login, .visibility, .updated_at).
 __ghcr_print_repo_list() {
   __apimgr_jq -r '.[] | "\(.owner.login)/\(.name)\t\(.visibility)\t\(.version_count // 0)\t\(.updated_at // "")"' |
@@ -2587,9 +2587,9 @@ __glcr_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__glcr_url)" || return 1
   if [ -n "$data" ]; then
-    __glcr_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __glcr_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __glcr_curl -X "$method" "$base$path"
+    __glcr_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 __glcr_require_creds() {
@@ -2709,9 +2709,9 @@ __harbor_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url harbor)" || return 1
   if [ -n "$data" ]; then
-    __harbor_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __harbor_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __harbor_curl -X "$method" "$base$path"
+    __harbor_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Harbor's repo paths are PROJECT/REPONAME, where REPONAME may itself contain slashes (subgroups). Split on the
@@ -2816,9 +2816,9 @@ __quay_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url quay)" || return 1
   if [ -n "$data" ]; then
-    __quay_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __quay_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __quay_curl -X "$method" "$base$path"
+    __quay_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 __quay_print_repo_list() {
@@ -2920,9 +2920,9 @@ __cloudsmith_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url cloudsmith)" || return 1
   if [ -n "$data" ]; then
-    __cloudsmith_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __cloudsmith_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __cloudsmith_curl -X "$method" "$base$path"
+    __cloudsmith_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Cloudsmith-shaped formatters — repos have .name, .namespace, .description, .repository_type_str, .num_packages.
@@ -3035,9 +3035,9 @@ __artifactory_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url artifactory)" || return 1
   if [ -n "$data" ]; then
-    __artifactory_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __artifactory_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __artifactory_curl -X "$method" "$base$path"
+    __artifactory_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Artifactory's repo metadata: .key, .description, .type (LOCAL/REMOTE/VIRTUAL), .packageType, .url.
@@ -3148,9 +3148,9 @@ __nexus_api() {
   local method="$1" path="$2" data="$3"
   local base; base="$(__apimgr_provider_url nexus)" || return 1
   if [ -n "$data" ]; then
-    __nexus_curl -X "$method" -H "Content-Type: application/json" --data "$data" "$base$path"
+    __nexus_curl -X "$method" -H "Content-Type: application/json" --data "$data" "${base%/}/${path#/}"
   else
-    __nexus_curl -X "$method" "$base$path"
+    __nexus_curl -X "$method" "${base%/}/${path#/}"
   fi
 }
 # Nexus repo metadata: .name, .format, .type (hosted/proxy/group), .url, .online.
@@ -4113,11 +4113,23 @@ github|gitlab|gitea|forgejo|codeberg|gitee|pagure|sourcehut|sr.ht|srht|onedev|bi
   __apimgr_dispatch_provider "$provider" "$action" "$sub" "$@"
   APIMGR_EXIT_STATUS=$?
   ;;
-verify|user|org|repo|issue|pr|release|api)
+verify|user|org|repo|issue|pr|release|tag|image|api)
   # Top-level shortcut: provider auto-detected from git remote, then APIMGR_DEFAULT_PROVIDER.
-  __apimgr_resolve_provider ""
-  action="$1"; sub="${2:-}"
-  shift 2 2>/dev/null || shift 1 2>/dev/null || true
+  # If $2 is a known provider name, treat it as an explicit provider override.
+  # e.g. `apimgr verify docker` → verifies docker credentials
+  action="$1"
+  case "$2" in
+  github|gitlab|gitea|forgejo|codeberg|gitee|pagure|sourcehut|sr.ht|srht|onedev|bitbucket|docker|ghcr|glcr|harbor|quay|cloudsmith|artifactory|jfrog|nexus|sonatype)
+    __apimgr_resolve_provider "$2"
+    sub="${3:-}"
+    shift 3 2>/dev/null || shift 2 2>/dev/null || shift 1 2>/dev/null || true
+    ;;
+  *)
+    __apimgr_resolve_provider ""
+    sub="${2:-}"
+    shift 2 2>/dev/null || shift 1 2>/dev/null || true
+    ;;
+  esac
   __apimgr_dispatch_provider "$APIMGR_PROVIDER" "$action" "$sub" "$@"
   APIMGR_EXIT_STATUS=$?
   ;;
