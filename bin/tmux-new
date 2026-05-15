@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151005-git
+##@Version           :  202605151025-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151005-git"
+VERSION="202605151025-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -1116,7 +1116,24 @@ __update_all_configs() {
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __tmux_attach() {
-  local name="${1:-$(__tmux_list | tail -n1)}"
+  # If no server is running but saved state exists, restore all sessions first
+  if ! __tmux list-sessions &>/dev/null; then
+    local resurrect_last="$TMUX_NEW_RESURRECT_DIR/last"
+    local state_file="$TMUX_NEW_RESURRECT_DIR/state.txt"
+    if [ -L "$resurrect_last" ] || [ -f "$state_file" ]; then
+      __tmux_restore || true
+      __tmux_new_bg_tasks
+    fi
+  fi
+  # Attach to named session, or fall back to the most-recently-used one
+  local name
+  if [ -n "$1" ]; then
+    name="$1"
+  else
+    name=$(__tmux list-sessions -F "#{session_last_attached} #{session_name}" 2>/dev/null \
+      | sort -rn | head -1 | cut -d' ' -f2-)
+    [ -n "$name" ] || name="$(__tmux_list | tail -n1)"
+  fi
   [ -n "$name" ] || return 1
   __tmux attach -t "$name" 2>/dev/null
   return $?
