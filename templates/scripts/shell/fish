@@ -1,5 +1,4 @@
 #!/usr/bin/env fish
-# shellcheck shell=fish
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 ##@Version           :  GEN_SCRIPT_REPLACE_VERSION
 # @@Author           :  GEN_SCRIPT_REPLACE_AUTHOR
@@ -18,8 +17,6 @@
 # @@sudo/root        :  GEN_SCRIPT_REPLACE_SUDO
 # @@Template         :  shell/fish
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-trap '' EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
 set -g APPNAME (path basename (status filename))
 set -g VERSION GEN_SCRIPT_REPLACE_VERSION
@@ -27,10 +24,24 @@ set -g RUN_USER $USER
 set -g SET_UID (id -u)
 set -g SCRIPT_SRC_DIR (path dirname (status filename))
 set -g GEN_SCRIPT_REPLACE_ENV_CWD $PWD
+set -g GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS 0
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# "output" "number"
+# Define color Variables
+set -g PRINTF_SET_BLACK '\e[1;30m'
+set -g PRINTF_SET_RED '\e[0;31m'
+set -g PRINTF_SET_GREEN '\e[0;32m'
+set -g PRINTF_SET_YELLOW '\e[1;33m'
+set -g PRINTF_SET_BLUE '\e[1;34m'
+set -g PRINTF_SET_PURPLE '\e[0;35m'
+set -g PRINTF_SET_CYAN '\e[0;36m'
+set -g PRINTF_SET_WHITE '\e[1;37m'
+set -g PRINTF_SET_RESET '\e[0m'
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define custom variables
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# script functions
+# __printf_color "text" $PRINTF_SET_COLOR
 if set -q NO_COLOR; or test "$SHOW_RAW" = true
-  # Disable colorization
   function __printf_color -d 'print output'
     printf '%s\n' $argv[1]
   end
@@ -54,20 +65,12 @@ function __function_exists -d "Check if command is a function"
   functions -q $argv[1]
 end
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# custom functions
+# create custom functions
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Define Variables
-set -g PRINTF_SET_BLACK '\e[1;30m'
-set -g PRINTF_SET_RED '\e[0;31m'
-set -g PRINTF_SET_GREEN '\e[0;32m'
-set -g PRINTF_SET_YELLOW '\e[1;33m'
-set -g PRINTF_SET_BLUE '\e[1;34m'
-set -g PRINTF_SET_PURPLE '\e[0;35m'
-set -g PRINTF_SET_CYAN '\e[0;36m'
-set -g PRINTF_SET_WHITE '\e[1;37m'
-set -g PRINTF_SET_RESET '\e[0m'
-set -g GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS 0
+function __trap_exit --on-event fish_exit
+end
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
 __printf_color "User ID: $SET_UID"

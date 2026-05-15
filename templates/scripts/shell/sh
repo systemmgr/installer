@@ -20,30 +20,16 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# script variables
 APPNAME="${0##*/}"
 VERSION="GEN_SCRIPT_REPLACE_VERSION"
 RUN_USER="${USER}"
 SET_UID="$(id -u)"
 SCRIPT_SRC_DIR="$(dirname -- "$0")"
 GEN_SCRIPT_REPLACE_ENV_CWD="${PWD}"
+GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-trap '' EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# colorization
-if [ -n "${NO_COLOR+x}" ] || [ "${SHOW_RAW}" = "true" ]; then
-  __printf_color() { printf '%s\n' "$1"; }
-else
-  __printf_color() { [ -t 1 ] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
-fi
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# check for command
-__cmd_exists() { command -v "$1" >/dev/null 2>&1; }
-__function_exists() { case "$(type "$1" 2>/dev/null)" in *function*) return 0 ;; *) return 1 ;; esac; }
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# custom functions
-
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Define variables
+# Define color variables
 PRINTF_SET_BLACK='\033[1;30m'
 PRINTF_SET_RED='\033[0;31m'
 PRINTF_SET_GREEN='\033[0;32m'
@@ -53,7 +39,26 @@ PRINTF_SET_PURPLE='\033[0;35m'
 PRINTF_SET_CYAN='\033[0;36m'
 PRINTF_SET_WHITE='\033[1;37m'
 PRINTF_SET_RESET='\033[0m'
-GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define custom variables
+
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# script functions
+# __printf_color "text" "$PRINTF_SET_COLOR"
+if [ -n "${NO_COLOR+x}" ] || [ "${SHOW_RAW}" = "true" ]; then
+  __printf_color() { printf '%s\n' "$1"; }
+else
+  __printf_color() { [ -t 1 ] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# check for command
+__cmd_exists() { command -v "$1" >/dev/null 2>&1; }
+__function_exists() { case "$(type "$1" 2>/dev/null)" in *function*) return 0 ;; *) return 1 ;; esac }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# create custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+trap '' EXIT
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
 case "$1" in

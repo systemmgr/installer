@@ -26,24 +26,9 @@ RUN_USER="${USER}"
 SET_UID="${UID}"
 SCRIPT_SRC_DIR="${0:A:h}"
 GEN_SCRIPT_REPLACE_ENV_CWD="${PWD}"
+GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-trap '' EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# script functions
-if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
-  __printf_color() { printf '%s\n' "$1"; }
-else
-  __printf_color() { [[ -t 1 ]] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
-fi
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# check for command
-__cmd_exists() { (( $+commands[$1] )); }
-__function_exists() { (( $+functions[$1] )); }
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# custom functions
-
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Define Variables
+# Define color variables
 PRINTF_SET_BLACK='\e[1;30m'
 PRINTF_SET_RED='\e[0;31m'
 PRINTF_SET_GREEN='\e[0;32m'
@@ -53,8 +38,26 @@ PRINTF_SET_PURPLE='\e[0;35m'
 PRINTF_SET_CYAN='\e[0;36m'
 PRINTF_SET_WHITE='\e[1;37m'
 PRINTF_SET_RESET='\e[0m'
-GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define custom variables
 
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# script functions
+# __printf_color "text" "$PRINTF_SET_COLOR"
+if [[ -n "${NO_COLOR+x}" || "${SHOW_RAW}" == "true" ]]; then
+  __printf_color() { printf '%s\n' "$1"; }
+else
+  __printf_color() { [[ -t 1 ]] && printf '%b%s%b\n' "${2:-$PRINTF_SET_RESET}" "$1" "$PRINTF_SET_RESET" || printf '%s\n' "$1"; }
+fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# check for command
+__cmd_exists() { (($+commands[$1])); }
+__function_exists() { (($+functions[$1])); }
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# create custom functions
+
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+trap '' EXIT
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Main application
 __printf_color "User ID: $SET_UID"
