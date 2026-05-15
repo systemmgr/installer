@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151130-git
+##@Version           :  202605151145-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151130-git"
+VERSION="202605151145-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -8500,7 +8500,7 @@ org)
     shift 1
     [ "$1" = "help" ] && __printf_help "Usage: $APPNAME org clone [username [all]]"
     [ $# -eq 0 ] && { username="$(__org_resolve_username clone '')" || exit 1; set -- "$username"; }
-    local _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
+    _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
     for username in "$@"; do
       [ "$username" = "all" ] && { __git_all_orgs_clone "$username"; continue; }
       GITADMIN_DEFAULT_REPO_BASE="$_base_repo_url"
@@ -8536,7 +8536,7 @@ org)
     shift 1
     [ "$1" = "help" ] && __printf_help "Usage: $APPNAME org pull [username [all]]"
     [ $# -eq 0 ] && { username="$(__org_resolve_username pull '')" || exit 1; set -- "$username"; }
-    local _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
+    _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
     for username in "$@"; do
       [ "$username" = "all" ] && { __git_all_orgs_pull "$username"; continue; }
       GITADMIN_DEFAULT_REPO_BASE="$_base_repo_url"
@@ -8573,7 +8573,7 @@ org)
     # Default: treat remaining args as org/usernames for clone (legacy behavior).
     [ "$1" = "help" ] && __printf_help "Usage: $APPNAME org [all|repos|clone|push|pull] [username [all]]"
     [ $# -eq 0 ] && { username="$(__org_resolve_username '' '')" || exit 1; set -- "$username"; }
-    local _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
+    _base_repo_url="$GITADMIN_DEFAULT_REPO_BASE"
     for username in "$@"; do
       [ "$username" = "all" ] && { __git_all_orgs_clone "$username"; continue; }
       GITADMIN_DEFAULT_REPO_BASE="$_base_repo_url"
