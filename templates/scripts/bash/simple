@@ -20,6 +20,24 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# pipes fail
+set -o pipefail
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Reopen in a terminal
+#if [ ! -t 0 ] && { [ "$1" = --term ] || [ $# = 0 ]; }; then { [ "$1" = --term ] && shift 1 || true; } && TERMINAL_APP="TRUE" myterminal -e "$APPNAME $*" && exit || exit 1; fi
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Set script title
+#CASJAYS_DEV_TILE_FORMAT="${USER}@${HOSTNAME}:${PWD/#$HOME/~} - $APPNAME"
+#CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$APPNAME}}"
+#[ -z "$CASJAYSDEV_TITLE_SET" ] && printf '\033]0;%s\007' "$CASJAYS_DEV_TILE_FORMAT" && CASJAYSDEV_TITLE_SET="$APPNAME"
+export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$APPNAME}}" CASJAYSDEV_TITLE_SET
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Initial debugging
+[ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Disables colorization
+[ "$1" = "--no-color" ] && export SHOW_RAW="true"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # script variables
 APPNAME="${0##*/}"
 VERSION="GEN_SCRIPT_REPLACE_VERSION"
@@ -40,23 +58,38 @@ PRINTF_SET_CYAN='\e[0;36m'
 PRINTF_SET_WHITE='\e[1;37m'
 PRINTF_SET_RESET='\e[0m'
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Reopen in a terminal
-#if [ ! -t 0 ] && { [ "$1" = --term ] || [ $# = 0 ]; }; then { [ "$1" = --term ] && shift 1 || true; } && TERMINAL_APP="TRUE" myterminal -e "$APPNAME $*" && exit || exit 1; fi
+# Default exit code
+GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Set script title
-#CASJAYS_DEV_TILE_FORMAT="${USER}@${HOSTNAME}:${PWD/#$HOME/~} - $APPNAME"
-#CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$APPNAME}}"
-#[ -z "$CASJAYSDEV_TITLE_SET" ] && printf '\033]0;%s\007' "$CASJAYS_DEV_TILE_FORMAT" && CASJAYSDEV_TITLE_SET="$APPNAME"
-export CASJAYSDEV_TITLE_PREV="${CASJAYSDEV_TITLE_PREV:-${CASJAYSDEV_TITLE_SET:-$APPNAME}}" CASJAYSDEV_TITLE_SET
+# Application Folders
+GEN_SCRIPT_REPLACE_ENV_CACHE_DIR="${GEN_SCRIPT_REPLACE_ENV_CACHE_DIR:-$HOME/.cache/GEN_SCRIPT_REPLACE_FILENAME}"
+GEN_SCRIPT_REPLACE_ENV_LOG_DIR="${GEN_SCRIPT_REPLACE_ENV_LOG_DIR:-$HOME/.local/log/GEN_SCRIPT_REPLACE_FILENAME}"
+GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR="${GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR:-$HOME/.config/myscripts/GEN_SCRIPT_REPLACE_FILENAME}"
+GEN_SCRIPT_REPLACE_ENV_RUN_DIR="${GEN_SCRIPT_REPLACE_ENV_RUN_DIR:-$HOME/.local/run/system_scripts/$GEN_SCRIPT_REPLACE_ENV_SCRIPTS_PREFIX}"
+GEN_SCRIPT_REPLACE_ENV_TEMP_DIR="${GEN_SCRIPT_REPLACE_ENV_TEMP_DIR:-$HOME/.local/tmp/system_scripts/GEN_SCRIPT_REPLACE_FILENAME}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Initial debugging
-[ "$1" = "--debug" ] && set -x && export SCRIPT_OPTS="--debug" && export _DEBUG="on"
+# File settings
+GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE="${GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE:-settings.conf}"
+GEN_SCRIPT_REPLACE_ENV_LOG_ERROR_FILE="${GEN_SCRIPT_REPLACE_ENV_LOG_ERROR_FILE:-$GEN_SCRIPT_REPLACE_ENV_LOG_DIR/error.log}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Disables colorization
-[ "$1" = "--no-color" ] && export SHOW_RAW="true"
+# Color Settings
+GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_1="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_1:-33}"
+GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_2="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_2:-5}"
+GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_GOOD="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_GOOD:-2}"
+GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_ERROR="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_ERROR:-1}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# pipes fail
-set -o pipefail
+# Notification Settings
+GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_ENABLED="${GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_ENABLED:-yes}"
+GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_COMMAND="${GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_COMMAND:-web-notify telegram}"
+# System
+GEN_SCRIPT_REPLACE_ENV_SYSTEM_NOTIFY_ENABLED="${GEN_SCRIPT_REPLACE_ENV_SYSTEM_NOTIFY_ENABLED:-yes}"
+GEN_SCRIPT_REPLACE_ENV_GOOD_NAME="${GEN_SCRIPT_REPLACE_ENV_GOOD_NAME:-Great:}"
+GEN_SCRIPT_REPLACE_ENV_ERROR_NAME="${GEN_SCRIPT_REPLACE_ENV_ERROR_NAME:-Error:}"
+GEN_SCRIPT_REPLACE_ENV_GOOD_MESSAGE="${GEN_SCRIPT_REPLACE_ENV_GOOD_MESSAGE:-No errors reported}"
+GEN_SCRIPT_REPLACE_ENV_ERROR_MESSAGE="${GEN_SCRIPT_REPLACE_ENV_ERROR_MESSAGE:-Errors were reported}"
+GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_NAME="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_NAME:-$APPNAME}"
+GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_ICON="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_ICON:-notification-new}"
+GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY:-normal}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Send all output to /dev/null
 __devnull() {
@@ -98,12 +131,12 @@ else
 fi
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional printf_ colors
-__printf_head() { __printf_color "$1" "$PRINTF_SET_PURPLE"; }
-__printf_opts() { __printf_color "$1" "$PRINTF_SET_CYAN"; }
-__printf_line() { __printf_color "$1" "$PRINTF_SET_BLUE"; }
+__printf_head() { __printf_color "$1" "$PRINTF_SET_BLUE"; }
+__printf_opts() { __printf_color "$1" "$PRINTF_SET_PURPLE"; }
+__printf_line() { __printf_color "$1" "$PRINTF_SET_CYAN"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # output version
-__version() { __printf_color "$VERSION"; }
+__version() { __printf_color "$VERSION" "$PRINTF_SET_CYAN"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # prints all available options
 __list_options() {
@@ -197,7 +230,7 @@ __how_long_did_it_take() {
   local dt3=$(echo "$dt2-3600*$dh" | bc)
   local dm=$(echo "$dt3/60" | bc)
   local ds=$(echo "$dt3-60*$dm" | bc)
-  printf_purple "$(LC_NUMERIC=C printf "Total runtime: %d Days, %02d Hours, %02d Minutes, %02.4f Seconds\n" $dd $dh $dm $ds)"
+  __printf_color "$(LC_NUMERIC=C printf "Total runtime: %d Days, %02d Hours, %02d Minutes, %02.4f Seconds\n" $dd $dh $dm $ds)" "$PRINTF_SET_PURPLE"
   return $retval
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -239,7 +272,7 @@ GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CL
 EOF
   if builtin type -t __gen_config_local | grep -q 'function'; then __gen_config_local; fi
   if [ -f "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE" ]; then
-    [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
+    [ "$INIT_CONFIG" = "TRUE" ] || __printf_color "Your config file for $APPNAME has been created" "$PRINTF_SET_GREEN"
     . "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE"
     GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
   else
@@ -265,7 +298,7 @@ __help() {
   __printf_line "--version                       - Show script version"
   __printf_line "--options                       - Shows all available options"
   __printf_line "--debug                         - Enables script debugging"
-  __printf_line "--no-color                           - Disable ANSI color output"
+  __printf_line "--no-color                      - Disable ANSI color output"
   __printf_line "--no                            - No options"
   __printf_line "--yes                           - Yes options"
   __printf_line ""
@@ -315,49 +348,7 @@ __notify_remote() {
   fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Setup trap to remove temp file
-trap '__trap_exit_GEN_SCRIPT_REPLACE_FILENAME' EXIT
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# start timer
-GEN_SCRIPT_REPLACE_ENV_START_TIMER="${GEN_SCRIPT_REPLACE_ENV_START_TIMER:-$(date +%s.%N)}"
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
-
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Default exit code
-GEN_SCRIPT_REPLACE_ENV_EXIT_STATUS=0
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Application Folders
-GEN_SCRIPT_REPLACE_ENV_CACHE_DIR="${GEN_SCRIPT_REPLACE_ENV_CACHE_DIR:-$HOME/.cache/GEN_SCRIPT_REPLACE_FILENAME}"
-GEN_SCRIPT_REPLACE_ENV_LOG_DIR="${GEN_SCRIPT_REPLACE_ENV_LOG_DIR:-$HOME/.local/log/GEN_SCRIPT_REPLACE_FILENAME}"
-GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR="${GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR:-$HOME/.config/myscripts/GEN_SCRIPT_REPLACE_FILENAME}"
-GEN_SCRIPT_REPLACE_ENV_RUN_DIR="${GEN_SCRIPT_REPLACE_ENV_RUN_DIR:-$HOME/.local/run/system_scripts/$GEN_SCRIPT_REPLACE_ENV_SCRIPTS_PREFIX}"
-GEN_SCRIPT_REPLACE_ENV_TEMP_DIR="${GEN_SCRIPT_REPLACE_ENV_TEMP_DIR:-$HOME/.local/tmp/system_scripts/GEN_SCRIPT_REPLACE_FILENAME}"
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# File settings
-GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE="${GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE:-settings.conf}"
-GEN_SCRIPT_REPLACE_ENV_LOG_ERROR_FILE="${GEN_SCRIPT_REPLACE_ENV_LOG_ERROR_FILE:-$GEN_SCRIPT_REPLACE_ENV_LOG_DIR/error.log}"
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Color Settings
-GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_1="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_1:-33}"
-GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_2="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_2:-5}"
-GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_GOOD="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_GOOD:-2}"
-GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_ERROR="${GEN_SCRIPT_REPLACE_ENV_OUTPUT_COLOR_ERROR:-1}"
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Notification Settings
-GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_ENABLED="${GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_ENABLED:-yes}"
-GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_COMMAND="${GEN_SCRIPT_REPLACE_ENV_REMOTE_NOTIFY_COMMAND:-web-notify telegram}"
-# System
-GEN_SCRIPT_REPLACE_ENV_SYSTEM_NOTIFY_ENABLED="${GEN_SCRIPT_REPLACE_ENV_SYSTEM_NOTIFY_ENABLED:-yes}"
-GEN_SCRIPT_REPLACE_ENV_GOOD_NAME="${GEN_SCRIPT_REPLACE_ENV_GOOD_NAME:-Great:}"
-GEN_SCRIPT_REPLACE_ENV_ERROR_NAME="${GEN_SCRIPT_REPLACE_ENV_ERROR_NAME:-Error:}"
-GEN_SCRIPT_REPLACE_ENV_GOOD_MESSAGE="${GEN_SCRIPT_REPLACE_ENV_GOOD_MESSAGE:-No errors reported}"
-GEN_SCRIPT_REPLACE_ENV_ERROR_MESSAGE="${GEN_SCRIPT_REPLACE_ENV_ERROR_MESSAGE:-Errors were reported}"
-GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_NAME="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_NAME:-$APPNAME}"
-GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_ICON="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_ICON:-notification-new}"
-GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY:-normal}"
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Additional Variables
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Import config
@@ -370,6 +361,9 @@ GEN_SCRIPT_REPLACE_ENV_NOTIFY_CLIENT_URGENCY="${GEN_SCRIPT_REPLACE_ENV_NOTIFY_CL
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set custom actions
 
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Setup trap to remove temp file
+trap '__trap_exit_GEN_SCRIPT_REPLACE_FILENAME' EXIT
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Argument/Option settings
 SETARGS=("$@")
@@ -436,6 +430,7 @@ while :; do
     [ -z "$SHORTOPTS" ] || __list_options "Short Options" "-${SHORTOPTS}" ',' '-' "$PRINTF_SET_BLUE"
     [ -z "$LONGOPTS" ] || __list_options "Long Options" "--${LONGOPTS}" ',' '--' "$PRINTF_SET_BLUE"
     [ -z "$ARRAY" ] || __list_options "Base Options" "${ARRAY}" ',' '' "$PRINTF_SET_BLUE"
+    [ -z "$LIST" ] || __list_options "LIST Options" "${LIST}" ',' '' "$PRINTF_SET_BLUE"
     exit $?
     ;;
   --version)
