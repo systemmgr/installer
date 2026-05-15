@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151430-git
+##@Version           :  202605151500-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151430-git"
+VERSION="202605151500-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -471,14 +471,18 @@ PREFIX = Ctrl+Space
 
 ┌─ WINDOW ──────────────────────────────────────────────────────────────────────┐
 │ PREFIX c           New window (retain current directory)                      │
-│ PREFIX n           Next window                                                │
-│ PREFIX p           Previous window                                            │
+│ PREFIX <           Previous window                                            │
+│ PREFIX >           Next window                                                │
+│ PREFIX n           Next window (alternate)                                    │
+│ PREFIX p           Previous window (alternate)                                │
 │ PREFIX `           Last window                                                │
 │ PREFIX ,           Rename current window                                      │
 │ PREFIX r           Move all windows to another session                        │
 │ PREFIX @           Kill current window (with confirmation)                    │
 │ PREFIX Shift+Tab   Choose window (zoomed tree view)                           │
 │ PREFIX 1-9         Switch to window 1-9                                       │
+│ PREFIX Shift+Left  Move window left (reorder)                                 │
+│ PREFIX Shift+Right Move window right (reorder)                                │
 │ Shift+Left         Previous window (no prefix)                                │
 │ Shift+Right        Next window (no prefix)                                    │
 └───────────────────────────────────────────────────────────────────────────────┘
