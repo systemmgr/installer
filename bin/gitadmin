@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151145-git
+##@Version           :  202605151200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151145-git"
+VERSION="202605151200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -7460,7 +7460,7 @@ tag)
     if __git_tag_add "$@"; then
       printf_blue "Tag has been added to your project"
     else
-      printf_return "Failed to add the to your project"
+      printf_return "Failed to add tag to your project"
     fi
     exit
     ;;
@@ -8703,7 +8703,7 @@ github)
     { [ $# -lt 2 ] || [ "$1" = "help" ]; } && __printf_help "Usage: $APPNAME github remote [username/projectname] [name]"
     [ -d "$1/.git" ] && GITADMIN_CWD="$1" && shift 1
     do_not_add_a_url "$1"
-    git -C "$GITADMIN_CWD" remote add "${2:-orgin}" "https://github.com/$1.git"
+    git -C "$GITADMIN_CWD" remote add "${2:-origin}" "https://github.com/$1.git"
     exit "$?"
     ;;
 
@@ -8921,7 +8921,7 @@ gitlab)
     shift 1
     [ $# -eq 0 ] && [ -d "$PWD/.git" ] && homerepo="$PWD" || { [ -d "$1/.git" ] && homerepo="$1"; } || homerepo="$(ls -d "$GITADMIN_DEFAULT_GIT_DIR_GITLAB"/*/*)"
     for d in $homerepo; do
-      __mkd "$d" && [ -d "$d/.git" ] && __cd_into "$d" || printf_exit 1 1 "failed to push from: $d"
+      { __mkd "$d" && [ -d "$d/.git" ]; } || { printf_red "failed to push from: $d"; continue; }
       __git_push_single "$d"
     done
     ;;
@@ -8932,7 +8932,7 @@ gitlab)
     [ "$1" = "help" ] && __printf_help "Usage: $APPNAME update | pull the repos"
     [ $# -eq 0 ] && [ -d "$PWD/.git" ] && homerepo="$PWD" || { [ -d "$1/.git" ] && homerepo="$1"; } || homerepo="$(ls -d "$GITADMIN_DEFAULT_GIT_DIR_GITLAB"/*/*)"
     for d in $homerepo; do
-      __mkd "$d" && [ -d "$d/.git" ] && __cd_into "$d" || printf_exit 1 1 "failed to pull to: $d"
+      { __mkd "$d" && [ -d "$d/.git" ]; } || { printf_red "failed to pull from: $d"; continue; }
       __git_pull_single "$d"
     done
     ;;
@@ -8940,10 +8940,10 @@ gitlab)
     # add gitlab to remote
   remote)
     shift 1
-    { [ $# -ne 0 ] || [ "$1" = "help" ]; } && __printf_help "Usage: $APPNAME gitlab remote [username/projectname] [name]"
+    { [ $# -lt 2 ] || [ "$1" = "help" ]; } && __printf_help "Usage: $APPNAME gitlab remote [username/projectname] [name]"
     do_not_add_a_url "$1"
     remote_repo="https://gitlab.com/$(__strip_git_url "$1")"
-    git -C "$GITADMIN_CWD" remote add "${2:-orgin}" "https://github.com/$1.git"
+    git -C "$GITADMIN_CWD" remote add "${2:-origin}" "$remote_repo.git"
     exit "$?"
     ;;
 
@@ -9062,9 +9062,9 @@ private)
     # add private to remote
   remote)
     shift 1
-    { [ $# -ne 2 ] || [ "$1" = "help" ]; } && __printf_help "Usage: $APPNAME private remote username/projectname [name]"
+    { [ $# -lt 1 ] || [ "$1" = "help" ]; } && __printf_help "Usage: $APPNAME private remote username/projectname [name]"
     do_not_add_a_url "$1"
-    git -C "$GITADMIN_DEFAULT_GIT_DIR_PRIVATE/$2" remote add "${2:-orgin}" "https://github.com/$(__strip_git_url "$1").git"
+    git -C "$GITADMIN_DEFAULT_GIT_DIR_PRIVATE/${1##*/}" remote add "${2:-origin}" "$GITADMIN_PERSONAL_GIT_HOST/$(__strip_git_url "$1").git"
     exit "$?"
     ;;
 
