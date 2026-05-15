@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151045-git
+##@Version           :  202605151100-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  WTFPL
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151045-git"
+VERSION="202605151100-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -607,6 +607,18 @@ __create_dirs() {
     fi
   done
   return
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Remove a directory only if it exists and is empty.
+# Call after any operation that may have created a directory but then failed
+# (e.g. a git clone of a non-existent repo leaves an empty target dir).
+__cleanup_empty_dir() {
+  local dir="$1"
+  [ -n "$dir" ] || return 0
+  [ -d "$dir" ] || return 0
+  if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+    rmdir "$dir" 2>/dev/null && printf_yellow "Removed empty directory: $dir" || true
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 __update_usage() {
@@ -6036,7 +6048,9 @@ __main() {
       git_succes="😼 Successfully cloned to $git_dir 😼 "
       printf_purple "🌀 Now running git clone $user_repo 🌀"
       __git_clone "$user_repo" "$git_dir"
-      __getexitcode "$git_succes" "$git_failed"
+      local _clone_exit=$?
+      __getexitcode "$_clone_exit" "$git_succes" "$git_failed"
+      [ "$_clone_exit" -ne 0 ] && __cleanup_empty_dir "$git_dir"
     fi
     echo ""
   done
