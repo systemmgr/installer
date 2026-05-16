@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605161200-git
+##@Version           :  202605161230-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605161200-git"
+VERSION="202605161230-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -151,7 +151,7 @@ __gen_config() {
     cp -Rf "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE" "$APIMGR_CONFIG_BACKUP_DIR/$APIMGR_CONFIG_FILE.$$"
   cat <<EOF >"$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE"
 # Settings for apimgr — multi-provider API client.
-# Tokens belong in ~/.config/secure/apimgr.txt (mode 0600), which is sourced before this file.
+# Tokens are set via your shell environment (e.g. ~/.config/secure/apimgr.txt loaded by your shell rc).
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default provider when no provider is given and git-remote auto-detect fails.
 APIMGR_DEFAULT_PROVIDER="${APIMGR_DEFAULT_PROVIDER:-github}"
@@ -163,7 +163,7 @@ APIMGR_DEFAULT_PROVIDER="${APIMGR_DEFAULT_PROVIDER:-github}"
 #   Token:               --token  →  APIMGR_<P>_TOKEN  →  <P>_ACCESS_TOKEN  →  <P>_TOKEN  (DOCKER also tries DOCKER_HUB_API_KEY)
 #   Username:            APIMGR_<P>_USERNAME  →  <P>_USERNAME    (e.g. GITHUB_USERNAME)
 #
-# Set the *_URL/*_TOKEN env vars in your shell rc (or ~/.config/secure/apimgr.txt) — apimgr never hardcodes endpoints.
+# Set the *_URL/*_TOKEN env vars in your shell rc or ~/.config/secure/apimgr.txt — apimgr never hardcodes endpoints.
 # Override per-invocation with --token, --official, or APIMGR_<P>_* in this file.
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # HTTP behavior
@@ -265,7 +265,7 @@ __help() {
   __printf_line "--repo USER/REPO                - Target repository (otherwise auto-detected from git remote)"
   __printf_line "--user NAME                     - Target user"
   __printf_line "--org NAME                      - Target org"
-  __printf_line "--token TOKEN                   - Auth token override (otherwise from env or ~/.config/secure/apimgr.txt)"
+  __printf_line "--token TOKEN                   - Auth token override (otherwise from env: APIMGR_<P>_TOKEN or <P>_ACCESS_TOKEN)"
   __printf_line "--official                      - Use the public service for the chosen provider (overrides self-host URL)"
   __printf_line "--title TEXT, --body TEXT       - For create-issue / create-pr"
   __printf_line "--state open|closed|all         - Filter for list operations"
@@ -455,23 +455,6 @@ APIMGR_START_TIMER="${APIMGR_START_TIMER:-$(date +%s.%N)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Read ENV→APIMGR_ variable name mappings from ~/.config/secure/*.txt.
-# Format: one mapping per line — APIMGR_VARNAME=SYSTEM_ENV_VAR
-# If SYSTEM_ENV_VAR is set in the current environment, its value is assigned to APIMGR_VARNAME.
-# Existing APIMGR_* values are never overwritten (env/config takes precedence).
-# Lines starting with '#' and blank lines are ignored.
-for __apimgr_sec in "$HOME"/.config/secure/*.txt; do
-  [ -f "$__apimgr_sec" ] || continue
-  while IFS='=' read -r __apimgr_k __apimgr_v || [ -n "$__apimgr_k" ]; do
-    case "$__apimgr_k" in '#'* | '') continue ;; APIMGR_*) ;; *) continue ;; esac
-    [ -n "$__apimgr_v" ] || continue
-    eval "[ -z \"\${${__apimgr_k}+x}\" ] || continue"
-    eval "__apimgr_sys=\${${__apimgr_v}:-}"
-    [ -n "$__apimgr_sys" ] || continue
-    export "${__apimgr_k}=${__apimgr_sys}"
-  done <"$__apimgr_sec"
-done
-unset __apimgr_sec __apimgr_k __apimgr_v __apimgr_sys
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Print message + exit. Uniform error path so callers don't repeat the printf-then-exit pattern.
 __apimgr_die() { printf_red "Error: $1" >&2; exit "${2:-1}"; }
@@ -530,7 +513,7 @@ __apimgr_require_creds() {
   __apimgr_provider_url "$provider" >/dev/null \
     || __apimgr_die "No URL for '$provider' — set ${P}_API_URL or APIMGR_${P}_URL (use --official with ${P}_OFFICIAL_API_URL)"
   __apimgr_provider_token "$provider" >/dev/null \
-    || __apimgr_die "No token for '$provider' — set ${P}_ACCESS_TOKEN, APIMGR_${P}_TOKEN, pass --token, or add to any ~/.config/secure/*.txt file"
+    || __apimgr_die "No token for '$provider' — set ${P}_ACCESS_TOKEN, APIMGR_${P}_TOKEN, or pass --token"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parse a git remote URL and emit "<provider> <user/repo>". Recognizes github/gitlab/codeberg by hostname,
@@ -4847,7 +4830,27 @@ APIMGR_NOTIFY_CLIENT_ICON="${APIMGR_NOTIFY_CLIENT_ICON:-notification-new}"
 APIMGR_NOTIFY_CLIENT_URGENCY="${APIMGR_NOTIFY_CLIENT_URGENCY:-normal}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Additional Variables
-
+APIMGR_GITHUB_TOKEN="${APIMGR_GITHUB_TOKEN:-${GITHUB_ACCESS_TOKEN:-$GITHUB_TOKEN}}"
+APIMGR_GITLAB_TOKEN="${APIMGR_GITLAB_TOKEN:-${GITLAB_ACCESS_TOKEN:-$GITLAB_TOKEN}}"
+APIMGR_GITEA_TOKEN="${APIMGR_GITEA_TOKEN:-${GITEA_ACCESS_TOKEN:-$GITEA_TOKEN}}"
+APIMGR_FORGEJO_TOKEN="${APIMGR_FORGEJO_TOKEN:-${FORGEJO_ACCESS_TOKEN:-$FORGEJO_TOKEN}}"
+APIMGR_CODEBERG_TOKEN="${APIMGR_CODEBERG_TOKEN:-${CODEBERG_ACCESS_TOKEN:-$CODEBERG_TOKEN}}"
+APIMGR_GITEE_TOKEN="${APIMGR_GITEE_TOKEN:-${GITEE_ACCESS_TOKEN:-$GITEE_TOKEN}}"
+APIMGR_BITBUCKET_TOKEN="${APIMGR_BITBUCKET_TOKEN:-${BITBUCKET_ACCESS_TOKEN:-$BITBUCKET_TOKEN}}"
+APIMGR_DOCKER_TOKEN="${APIMGR_DOCKER_TOKEN:-${DOCKER_HUB_API_KEY:-${DOCKER_ACCESS_TOKEN:-$DOCKER_TOKEN}}}"
+APIMGR_GHCR_TOKEN="${APIMGR_GHCR_TOKEN:-${GITHUB_ACCESS_TOKEN:-$GITHUB_TOKEN}}"
+APIMGR_GLCR_TOKEN="${APIMGR_GLCR_TOKEN:-${GITLAB_ACCESS_TOKEN:-$GITLAB_TOKEN}}"
+APIMGR_HARBOR_TOKEN="${APIMGR_HARBOR_TOKEN:-${HARBOR_ACCESS_TOKEN:-$HARBOR_TOKEN}}"
+APIMGR_QUAY_TOKEN="${APIMGR_QUAY_TOKEN:-${QUAY_ACCESS_TOKEN:-$QUAY_TOKEN}}"
+APIMGR_CLOUDSMITH_TOKEN="${APIMGR_CLOUDSMITH_TOKEN:-${CLOUDSMITH_API_KEY:-${CLOUDSMITH_ACCESS_TOKEN:-$CLOUDSMITH_TOKEN}}}"
+APIMGR_NEXUS_TOKEN="${APIMGR_NEXUS_TOKEN:-${NEXUS_ACCESS_TOKEN:-$NEXUS_TOKEN}}"
+APIMGR_ONEDEV_TOKEN="${APIMGR_ONEDEV_TOKEN:-${ONEDEV_ACCESS_TOKEN:-$ONEDEV_TOKEN}}"
+APIMGR_PAGURE_TOKEN="${APIMGR_PAGURE_TOKEN:-${PAGURE_ACCESS_TOKEN:-$PAGURE_TOKEN}}"
+APIMGR_GITHUB_URL="${APIMGR_GITHUB_URL:-${GITHUB_API_URL:-}}"
+APIMGR_GITLAB_URL="${APIMGR_GITLAB_URL:-${GITLAB_API_URL:-}}"
+APIMGR_GITEA_URL="${APIMGR_GITEA_URL:-${GITEA_API_URL:-}}"
+APIMGR_FORGEJO_URL="${APIMGR_FORGEJO_URL:-${FORGEJO_API_URL:-}}"
+APIMGR_CODEBERG_URL="${APIMGR_CODEBERG_URL:-${CODEBERG_API_URL:-}}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Generate config files
 [ -f "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE" ] || [ "$*" = "--config" ] || INIT_CONFIG="${INIT_CONFIG:-TRUE}" __gen_config ${SETARGS:-$@}
