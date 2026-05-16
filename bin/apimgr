@@ -223,22 +223,29 @@ __help() {
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
   __printf_line "verify                          - Confirm credentials work; print authenticated user"
   __printf_line "user [get]                      - Get user info (defaults to authed user; --user NAME for another)"
-  __printf_line "org [get|all]                   - Org info / list all repos in org"
-  __printf_line "repo [list|get|create|delete|all]"
+  __printf_line "org [get|all]                   - Org info / list all repos in org (all = paginate every page)"
+  __printf_line "repo [list [all]|get|create|delete]"
   __printf_line "                                - Repo ops; --repo USER/REPO selects target (or auto-detect from cwd)"
-  __printf_line "issue [list|get N|create|close N|comment N]"
+  __printf_line "                                  list all: return every page of results"
+  __printf_line "issue [list [all]|get N|create|close N|comment N]"
   __printf_line "                                - Issue ops; --repo, --title, --body, --state, --limit"
-  __printf_line "pr     [list|get N|create|merge N|close N]"
+  __printf_line "                                  list all: return every page of results"
+  __printf_line "pr    [list [all]|get N|create|merge N|close N]"
   __printf_line "                                - PR/MR ops; --branch SOURCE, --base TARGET (default: repo's default_branch)"
-  __printf_line "release [list|get TAG|create|delete TAG]"
+  __printf_line "                                  list all: return every page of results"
+  __printf_line "release [list [all]|get TAG|create|delete TAG]"
   __printf_line "                                - Release ops (git forges only); --tag NAME (required for create), --title, --body, --branch"
-  __printf_line "tag    [list|get TAG|create|delete TAG]"
+  __printf_line "                                  list all: return every page of results"
+  __printf_line "tag   [list [all]|get TAG|create|delete TAG]"
   __printf_line "                                - Tag ops. Forges: git tags (--tag NAME, --branch SHA-or-branch, --body MSG)."
   __printf_line "                                  Registries (docker/harbor/quay): image tags (--repo NS/NAME, --tag NAME)."
-  __printf_line "actions [list|log-delete RUN_ID|logs-delete-all]"
-  __printf_line "                                - GitHub Actions only. list: workflow runs (add --all for every page)."
-  __printf_line "                                  log-delete RUN_ID: delete logs for one run."
-  __printf_line "                                  logs-delete-all: delete logs for every run in the repo."
+  __printf_line "                                  list all: return every page of results"
+  __printf_line "actions [list [all]|log view RUN_ID|log delete RUN_ID|log delete all]"
+  __printf_line "                                - GitHub Actions only."
+  __printf_line "                                  list [all]: workflow runs; all = every page"
+  __printf_line "                                  log view RUN_ID: pre-signed URL for the run's log archive (ZIP)"
+  __printf_line "                                  log delete RUN_ID: delete logs for one run"
+  __printf_line "                                  log delete all: delete logs for every run in the repo"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
   __printf_opts "Top-level shortcuts (no provider — auto-detect or default)"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -992,6 +999,24 @@ __github_actions_run_list() {
       __apimgr_jq -r '.workflow_runs[] | "\(.id)\t\(.name)\t\(.status)\t\(.conclusion // "-")\t\(.created_at)"' |
       column -t -s $'\t'
   fi
+}
+__github_actions_log_view() {
+  local run_id="${APIMGR_RUN_ID:-$1}"
+  __apimgr_require_creds github
+  __github_actions_repo
+  [ -n "$run_id" ] || __apimgr_die "github actions log view: RUN_ID required"
+  local token; token="$(__apimgr_provider_token github)" || return 1
+  local base; base="$(__apimgr_provider_url github)" || return 1
+  local loc
+  loc="$(curl -q -Ssf --max-time "${APIMGR_API_TIMEOUT:-10}" \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github+json" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -D - -o /dev/null \
+    "${base%/}/repos/$APIMGR_REPO/actions/runs/$run_id/logs" 2>/dev/null |
+    __grep -i -- '^[Ll]ocation:' | tr -d '\r' | awk '{print $2}')"
+  [ -n "$loc" ] || __apimgr_die "github actions log view: no log URL for run #$run_id (run may still be in progress)"
+  printf '%s\n' "$loc"
 }
 __github_actions_log_delete() {
   local run_id="${APIMGR_RUN_ID:-$1}"
@@ -3381,53 +3406,74 @@ __apimgr_dispatch_provider() {
           esac ;;
         repo)
           case "$sub" in
-            list)             __github_repo_list ;;
-            get|"")           __github_repo_get ;;
-            create)           __github_repo_create ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_repo_list ;;
+            get|show)         __github_repo_get ;;
+            create|new)       __github_repo_create ;;
             delete|rm)        __github_repo_delete ;;
-            all)              __github_repo_all ;;
-            *)                __apimgr_die "github repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
+            all)              APIMGR_ALL="true"; __github_repo_list ;;
+            *)                __apimgr_die "github repo: unknown sub '$sub' (try list [all]|get|create|delete)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __github_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_issue_list ;;
             get|show)         __github_issue_get "$1" ;;
             create|new)       __github_issue_create ;;
             close)            __github_issue_close "$1" ;;
             comment)          __github_issue_comment "$1" ;;
-            *)                __apimgr_die "github issue: unknown sub '$sub' (try list|get|create|close|comment)" ;;
+            *)                __apimgr_die "github issue: unknown sub '$sub' (try list [all]|get N|create|close N|comment N)" ;;
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __github_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_pr_list ;;
             get|show)         __github_pr_get "$1" ;;
             create|new)       __github_pr_create ;;
             merge)            __github_pr_merge "$1" ;;
             close)            __github_pr_close "$1" ;;
-            *)                __apimgr_die "github pr: unknown sub '$sub' (try list|get|create|merge|close)" ;;
+            *)                __apimgr_die "github pr: unknown sub '$sub' (try list [all]|get N|create|merge N|close N)" ;;
           esac ;;
         release|releases|rel)
           case "$sub" in
-            list|"")          __github_release_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_release_list ;;
             get|show)         __github_release_get "$1" ;;
             create|new)       __github_release_create ;;
             delete|rm)        __github_release_delete "$1" ;;
-            *)                __apimgr_die "github release: unknown sub '$sub' (try list|get|create|delete)" ;;
+            *)                __apimgr_die "github release: unknown sub '$sub' (try list [all]|get TAG|create|delete TAG)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __github_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_tag_list ;;
             get|show)         __github_tag_get "$1" ;;
             create|new)       __github_tag_create ;;
             delete|rm)        __github_tag_delete "$1" ;;
-            *)                __apimgr_die "github tag: unknown sub '$sub' (try list|get|create|delete)" ;;
+            *)                __apimgr_die "github tag: unknown sub '$sub' (try list [all]|get TAG|create|delete TAG)" ;;
           esac ;;
         actions|action|workflow|workflows|runs)
           case "$sub" in
-            list|"")                              __github_actions_run_list ;;
-            log-delete|log-del|log-rm)            __github_actions_log_delete "$1" ;;
-            logs-delete-all|logs-clear|logs-purge) __github_actions_logs_delete_all ;;
-            *)   __apimgr_die "github actions: unknown sub '$sub' (try list|log-delete RUN_ID|logs-delete-all)" ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __github_actions_run_list ;;
+            log)
+              local _av="${1:-}" _aa="${2:-}"
+              case "$_av" in
+                view|show|get)   __github_actions_log_view "$_aa" ;;
+                delete|rm|del)
+                  case "$_aa" in
+                    all)  __github_actions_logs_delete_all ;;
+                    *)    __github_actions_log_delete "$_aa" ;;
+                  esac ;;
+                *)  __apimgr_die "github actions log: try view RUN_ID|delete RUN_ID|delete all" ;;
+              esac ;;
+            *)   __apimgr_die "github actions: try list [all]|log view RUN_ID|log delete RUN_ID|log delete all" ;;
           esac ;;
         api)
           [ -n "$sub" ] || __apimgr_die "github api: PATH required (e.g. apimgr github api /user)"
