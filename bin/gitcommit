@@ -723,8 +723,8 @@ __gitcommit_setup_gpg_agent() {
   local changed=0
   __gitcommit_gpg_set_directive() {
     local key="$1" target="$2" existing
-    if grep -qE "^[[:space:]]*${key}[[:space:]]+" "$conf"; then
-      existing="$(grep -E "^[[:space:]]*${key}[[:space:]]+" "$conf" | head -1 | awk '{print $2}')"
+    if grep -qE -- "^[[:space:]]*${key}[[:space:]]+" "$conf"; then
+      existing="$(grep -E -- "^[[:space:]]*${key}[[:space:]]+" "$conf" | head -1 | awk '{print $2}')"
       if [[ "$existing" =~ ^[0-9]+$ ]] && [ "$existing" -ge "$target" ]; then
         printf_blue "$key already $existing (>= $target), leaving as-is"
         return 0
@@ -746,7 +746,7 @@ __gitcommit_setup_gpg_agent() {
   # passphrase-preloading paths used by CI/CD and AI invocations.
   __gitcommit_gpg_ensure_line() {
     local key="$1"
-    if grep -qE "^[[:space:]]*${key}[[:space:]]*$" "$conf"; then
+    if grep -qE -- "^[[:space:]]*${key}[[:space:]]*$" "$conf"; then
       printf_blue "$key already present, leaving as-is"
       return 0
     fi
@@ -776,7 +776,7 @@ __gitcommit_passphrase_file_valid() {
   [ -n "$f" ] || return 1
   [ -f "$f" ] || return 1
   [ -s "$f" ] || return 1
-  grep -q '[^[:space:]]' "$f" 2>/dev/null
+  grep -q -- '[^[:space:]]' "$f" 2>/dev/null
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Read the passphrase from a file: strip blank lines, return the
@@ -1120,11 +1120,23 @@ __gitcommit_cmd() {
   local pathspec_flag=()
   [ -n "$GITCOMMIT_FILE_PATH" ] && pathspec_flag=("--" "$GITCOMMIT_FILE_PATH")
   GITCOMMIT_FILE_PATH=""
-  if [ -s "$GITCOMMIT_MESSAGE_FILE" ]; then
-    __git_repo "$GITCOMMIT_ROOT_DIR" commit -q $(__gitcommit_sign_flag) -m "$(<"$GITCOMMIT_MESSAGE_FILE")" "${pathspec_flag[@]}" &>"$GITCOMMIT_TEMP_FILE" || return 1
-  else
-    __git_repo "$GITCOMMIT_ROOT_DIR" commit -q $(__gitcommit_sign_flag) -m "$GITCOMMIT_MESSAGE_FULL" "${pathspec_flag[@]}" &>"$GITCOMMIT_TEMP_FILE" || return 1
-  fi
+  local _commit_attempt=0 _commit_max=3 _commit_ok=0
+  while [ $_commit_attempt -lt $_commit_max ]; do
+    if [ -s "$GITCOMMIT_MESSAGE_FILE" ]; then
+      __git_repo "$GITCOMMIT_ROOT_DIR" commit -q $(__gitcommit_sign_flag) -m "$(<"$GITCOMMIT_MESSAGE_FILE")" "${pathspec_flag[@]}" &>"$GITCOMMIT_TEMP_FILE" && { _commit_ok=1; break; }
+    else
+      __git_repo "$GITCOMMIT_ROOT_DIR" commit -q $(__gitcommit_sign_flag) -m "$GITCOMMIT_MESSAGE_FULL" "${pathspec_flag[@]}" &>"$GITCOMMIT_TEMP_FILE" && { _commit_ok=1; break; }
+    fi
+    _commit_attempt=$((_commit_attempt + 1))
+    if [ $_commit_attempt -lt $_commit_max ] && __grep -qi 'lock\|Unable to create.*\.lock\|cannot lock' "$GITCOMMIT_TEMP_FILE" 2>/dev/null; then
+      printf_yellow "⚠️  Git lock contention — retrying in 2s (attempt $_commit_attempt/$_commit_max)..."
+      sleep 2
+      __git_check_lock "$GITCOMMIT_ROOT_DIR" 2>/dev/null || true
+    else
+      return 1
+    fi
+  done
+  [ $_commit_ok -eq 1 ] || return 1
   export GITCOMMIT_RAN="true" GITADMIN_NO_ERROR_MESSAGE="true"
   # Delete commit message file if it was used from .git/COMMIT_MSG or .git/COMMIT_MESS
   if [ -n "$GITCOMMIT_MESSAGE_FROM_FILE" ]; then
