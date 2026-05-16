@@ -56,6 +56,9 @@ USER_HOME="${USER_HOME:-$HOME}"
 SCRIPT_SRC_DIR="${BASH_SOURCE%/*}"
 GEN_SCRIPT_REPLACE_ENV_REQUIRE_SUDO="${GEN_SCRIPT_REPLACE_ENV_REQUIRE_SUDO:-GEN_SCRIPT_REPLACE_SUDO}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# Import config
+[ -f "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE" ] && . "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define color variables
 PRINTF_SET_BLACK='\e[1;30m'
 PRINTF_SET_RED='\e[0;31m'
@@ -359,9 +362,6 @@ __notify_remote() {
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 
-# - - - - - - - - - - - - - - - - - - - - - - - - -
-# Import config
-[ -f "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE" ] && . "$GEN_SCRIPT_REPLACE_ENV_CONFIG_DIR/$GEN_SCRIPT_REPLACE_ENV_CONFIG_FILE"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Ensure Directories exist
 [ -d "$GEN_SCRIPT_REPLACE_ENV_RUN_DIR" ] || mkdir -p "$GEN_SCRIPT_REPLACE_ENV_RUN_DIR" |& __devnull
