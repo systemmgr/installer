@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605161230-git
+##@Version           :  202605161300-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605161230-git"
+VERSION="202605161300-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -150,35 +150,79 @@ __gen_config() {
   [ -f "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE" ] &&
     cp -Rf "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE" "$APIMGR_CONFIG_BACKUP_DIR/$APIMGR_CONFIG_FILE.$$"
   cat <<EOF >"$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE"
-# Settings for apimgr — multi-provider API client.
-# Tokens are set via your shell environment (e.g. ~/.config/secure/apimgr.txt loaded by your shell rc).
+# Settings for apimgr
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Default provider when no provider is given and git-remote auto-detect fails.
 APIMGR_DEFAULT_PROVIDER="${APIMGR_DEFAULT_PROVIDER:-github}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# URLs and tokens are NOT set here — apimgr maps them at runtime from your existing env vars (see below).
-# Resolver precedence per provider:
-#   URL (default mode):  APIMGR_<P>_URL  →  <P>_API_URL          (e.g. GITHUB_API_URL, GITLAB_API_URL)
-#   URL (--official):    APIMGR_<P>_OFFICIAL_URL  →  <P>_OFFICIAL_API_URL  →  default-mode chain
-#   Token:               --token  →  APIMGR_<P>_TOKEN  →  <P>_ACCESS_TOKEN  →  <P>_TOKEN  (DOCKER also tries DOCKER_HUB_API_KEY)
-#   Username:            APIMGR_<P>_USERNAME  →  <P>_USERNAME    (e.g. GITHUB_USERNAME)
-#
-# Set the *_URL/*_TOKEN env vars in your shell rc or ~/.config/secure/apimgr.txt — apimgr never hardcodes endpoints.
-# Override per-invocation with --token, --official, or APIMGR_<P>_* in this file.
-# - - - - - - - - - - - - - - - - - - - - - - - - -
 # HTTP behavior
-APIMGR_API_TIMEOUT="${APIMGR_API_TIMEOUT:-10}"
-APIMGR_API_RETRY="${APIMGR_API_RETRY:-1}"
-APIMGR_DEFAULT_LIMIT="${APIMGR_DEFAULT_LIMIT:-30}"
+APIMGR_API_TIMEOUT="${APIMGR_API_TIMEOUT:-}"
+APIMGR_API_RETRY="${APIMGR_API_RETRY:-}"
+APIMGR_DEFAULT_LIMIT="${APIMGR_DEFAULT_LIMIT:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Provider tokens — leave blank to use env vars (APIMGR_<P>_TOKEN or <P>_ACCESS_TOKEN)
+APIMGR_GITHUB_TOKEN="${APIMGR_GITHUB_TOKEN:-}"
+APIMGR_GITLAB_TOKEN="${APIMGR_GITLAB_TOKEN:-}"
+APIMGR_GITEA_TOKEN="${APIMGR_GITEA_TOKEN:-}"
+APIMGR_FORGEJO_TOKEN="${APIMGR_FORGEJO_TOKEN:-}"
+APIMGR_CODEBERG_TOKEN="${APIMGR_CODEBERG_TOKEN:-}"
+APIMGR_GITEE_TOKEN="${APIMGR_GITEE_TOKEN:-}"
+APIMGR_BITBUCKET_TOKEN="${APIMGR_BITBUCKET_TOKEN:-}"
+APIMGR_DOCKER_TOKEN="${APIMGR_DOCKER_TOKEN:-}"
+APIMGR_GHCR_TOKEN="${APIMGR_GHCR_TOKEN:-}"
+APIMGR_GLCR_TOKEN="${APIMGR_GLCR_TOKEN:-}"
+APIMGR_HARBOR_TOKEN="${APIMGR_HARBOR_TOKEN:-}"
+APIMGR_QUAY_TOKEN="${APIMGR_QUAY_TOKEN:-}"
+APIMGR_CLOUDSMITH_TOKEN="${APIMGR_CLOUDSMITH_TOKEN:-}"
+APIMGR_NEXUS_TOKEN="${APIMGR_NEXUS_TOKEN:-}"
+APIMGR_ONEDEV_TOKEN="${APIMGR_ONEDEV_TOKEN:-}"
+APIMGR_PAGURE_TOKEN="${APIMGR_PAGURE_TOKEN:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Provider URLs — leave blank to use env vars (<P>_API_URL) or built-in defaults
+APIMGR_GITHUB_URL="${APIMGR_GITHUB_URL:-}"
+APIMGR_GITLAB_URL="${APIMGR_GITLAB_URL:-}"
+APIMGR_GITEA_URL="${APIMGR_GITEA_URL:-}"
+APIMGR_FORGEJO_URL="${APIMGR_FORGEJO_URL:-}"
+APIMGR_CODEBERG_URL="${APIMGR_CODEBERG_URL:-}"
+APIMGR_GITEE_URL="${APIMGR_GITEE_URL:-}"
+APIMGR_BITBUCKET_URL="${APIMGR_BITBUCKET_URL:-}"
+APIMGR_DOCKER_URL="${APIMGR_DOCKER_URL:-}"
+APIMGR_GHCR_URL="${APIMGR_GHCR_URL:-}"
+APIMGR_GLCR_URL="${APIMGR_GLCR_URL:-}"
+APIMGR_HARBOR_URL="${APIMGR_HARBOR_URL:-}"
+APIMGR_QUAY_URL="${APIMGR_QUAY_URL:-}"
+APIMGR_CLOUDSMITH_URL="${APIMGR_CLOUDSMITH_URL:-}"
+APIMGR_NEXUS_URL="${APIMGR_NEXUS_URL:-}"
+APIMGR_ONEDEV_URL="${APIMGR_ONEDEV_URL:-}"
+APIMGR_PAGURE_URL="${APIMGR_PAGURE_URL:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Provider usernames — leave blank to use env vars (<P>_USERNAME)
+APIMGR_GITHUB_USERNAME="${APIMGR_GITHUB_USERNAME:-}"
+APIMGR_GITLAB_USERNAME="${APIMGR_GITLAB_USERNAME:-}"
+APIMGR_GITEA_USERNAME="${APIMGR_GITEA_USERNAME:-}"
+APIMGR_FORGEJO_USERNAME="${APIMGR_FORGEJO_USERNAME:-}"
+APIMGR_CODEBERG_USERNAME="${APIMGR_CODEBERG_USERNAME:-}"
+APIMGR_DOCKER_USERNAME="${APIMGR_DOCKER_USERNAME:-}"
+APIMGR_HARBOR_USERNAME="${APIMGR_HARBOR_USERNAME:-}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Color Settings
-APIMGR_OUTPUT_COLOR_1="${APIMGR_OUTPUT_COLOR_1:-33}"
-APIMGR_OUTPUT_COLOR_2="${APIMGR_OUTPUT_COLOR_2:-5}"
-APIMGR_OUTPUT_COLOR_GOOD="${APIMGR_OUTPUT_COLOR_GOOD:-2}"
-APIMGR_OUTPUT_COLOR_ERROR="${APIMGR_OUTPUT_COLOR_ERROR:-1}"
+APIMGR_OUTPUT_COLOR_1="${APIMGR_OUTPUT_COLOR_1:-}"
+APIMGR_OUTPUT_COLOR_2="${APIMGR_OUTPUT_COLOR_2:-}"
+APIMGR_OUTPUT_COLOR_GOOD="${APIMGR_OUTPUT_COLOR_GOOD:-}"
+APIMGR_OUTPUT_COLOR_ERROR="${APIMGR_OUTPUT_COLOR_ERROR:-}"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Notification Settings
+APIMGR_NOTIFY_ENABLED="${APIMGR_NOTIFY_ENABLED:-}"
+APIMGR_GOOD_NAME="${APIMGR_GOOD_NAME:-}"
+APIMGR_ERROR_NAME="${APIMGR_ERROR_NAME:-}"
+APIMGR_GOOD_MESSAGE="${APIMGR_GOOD_MESSAGE:-}"
+APIMGR_ERROR_MESSAGE="${APIMGR_ERROR_MESSAGE:-}"
+APIMGR_NOTIFY_CLIENT_NAME="${APIMGR_NOTIFY_CLIENT_NAME:-}"
+APIMGR_NOTIFY_CLIENT_ICON="${APIMGR_NOTIFY_CLIENT_ICON:-}"
+APIMGR_NOTIFY_CLIENT_URGENCY="${APIMGR_NOTIFY_CLIENT_URGENCY:-}"
 
 EOF
-  if builtin type -t __gen_config_local | grep -q -- 'function'; then __gen_config_local; fi
+  if builtin type -t __gen_config_local | __grep -q -- 'function'; then __gen_config_local; fi
   if [ -f "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE" ]; then
     [ "$INIT_CONFIG" = "TRUE" ] || printf_green "Your config file for $APPNAME has been created"
     . "$APIMGR_CONFIG_DIR/$APIMGR_CONFIG_FILE"
