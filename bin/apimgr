@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605151400-git
+##@Version           :  202605161200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -21,7 +21,7 @@
 # shellcheck disable=SC1001,SC1003,SC2001,SC2003,SC2016,SC2031,SC2090,SC2115,SC2120,SC2155,SC2199,SC2229,SC2317,SC2329
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 APPNAME="${0##*/}"
-VERSION="202605151400-git"
+VERSION="202605161200-git"
 USER="${SUDO_USER:-$USER}"
 RUN_USER="${RUN_USER:-$USER}"
 USER_HOME="${USER_HOME:-$HOME}"
@@ -455,11 +455,26 @@ APIMGR_START_TIMER="${APIMGR_START_TIMER:-$(date +%s.%N)}"
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # User defined functions
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-# Source per-user token file if present (mode 0600 recommended). Sourced BEFORE settings.conf so settings can override.
-[ -f "$HOME/.config/secure/apimgr.txt" ] && . "$HOME/.config/secure/apimgr.txt"
+# Read ENV→APIMGR_ variable name mappings from ~/.config/secure/*.txt.
+# Format: one mapping per line — APIMGR_VARNAME=SYSTEM_ENV_VAR
+# If SYSTEM_ENV_VAR is set in the current environment, its value is assigned to APIMGR_VARNAME.
+# Existing APIMGR_* values are never overwritten (env/config takes precedence).
+# Lines starting with '#' and blank lines are ignored.
+for __apimgr_sec in "$HOME"/.config/secure/*.txt; do
+  [ -f "$__apimgr_sec" ] || continue
+  while IFS='=' read -r __apimgr_k __apimgr_v || [ -n "$__apimgr_k" ]; do
+    case "$__apimgr_k" in '#'* | '') continue ;; APIMGR_*) ;; *) continue ;; esac
+    [ -n "$__apimgr_v" ] || continue
+    eval "[ -z \"\${${__apimgr_k}+x}\" ] || continue"
+    eval "__apimgr_sys=\${${__apimgr_v}:-}"
+    [ -n "$__apimgr_sys" ] || continue
+    export "${__apimgr_k}=${__apimgr_sys}"
+  done <"$__apimgr_sec"
+done
+unset __apimgr_sec __apimgr_k __apimgr_v __apimgr_sys
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Print message + exit. Uniform error path so callers don't repeat the printf-then-exit pattern.
-__apimgr_die() { printf_red "$1" >&2; exit "${2:-1}"; }
+__apimgr_die() { printf_red "Error: $1" >&2; exit "${2:-1}"; }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # jq wrapper — silences errors so callers can pipe and check rc without polluting stderr.
 __apimgr_jq() { jq "$@" 2>/dev/null; }
@@ -515,7 +530,7 @@ __apimgr_require_creds() {
   __apimgr_provider_url "$provider" >/dev/null \
     || __apimgr_die "No URL for '$provider' — set ${P}_API_URL or APIMGR_${P}_URL (use --official with ${P}_OFFICIAL_API_URL)"
   __apimgr_provider_token "$provider" >/dev/null \
-    || __apimgr_die "No token for '$provider' — set ${P}_ACCESS_TOKEN, APIMGR_${P}_TOKEN, pass --token, or add it to ~/.config/secure/apimgr.txt"
+    || __apimgr_die "No token for '$provider' — set ${P}_ACCESS_TOKEN, APIMGR_${P}_TOKEN, pass --token, or add to any ~/.config/secure/*.txt file"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Parse a git remote URL and emit "<provider> <user/repo>". Recognizes github/gitlab/codeberg by hostname,
@@ -696,6 +711,15 @@ __apimgr_confirm() {
   case "$reply" in [yY]|[yY][eE][sS]) return 0 ;; *) return 1 ;; esac
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# Check an API response body for a JSON error object. Dies with the message if found.
+# Call after any curl that dropped -f. Checks .message / .error / .error_description.
+__apimgr_check_api_response() {
+  local data="$1" url="${2:-}" msg
+  [ -n "$data" ] || __apimgr_die "Empty API response${url:+ from $url}"
+  msg="$(__apimgr_jq -r 'if type == "object" then (.message // .error // .error_description // empty) else empty end' <<<"$data" 2>/dev/null)"
+  [ -z "$msg" ] || __apimgr_die "API error: $msg${url:+ ($url)}"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # Generic GitHub paginator — follows Link rel="next" headers until exhausted.
 # Usage: __apimgr_paginate_github PATH [KEY]
 #   PATH — API path with per_page already in the query string
@@ -709,12 +733,13 @@ __apimgr_paginate_github() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "Authorization: Bearer $token" \
       -H "Accept: application/vnd.github+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "github: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -739,11 +764,12 @@ __apimgr_paginate_gitea() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "Authorization: token $token" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "gitea: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -765,11 +791,12 @@ __apimgr_paginate_gitlab() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "PRIVATE-TOKEN: $token" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "gitlab: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -791,11 +818,12 @@ __apimgr_paginate_gitee() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "Authorization: token $token" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "gitee: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -824,11 +852,12 @@ __apimgr_paginate_harbor() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "Authorization: $auth_hdr" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "harbor: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -850,11 +879,12 @@ __apimgr_paginate_cloudsmith() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "X-Api-Key: $token" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "cloudsmith: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -876,12 +906,13 @@ __apimgr_paginate_ghcr() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "Authorization: Bearer $token" \
       -H "Accept: application/vnd.github+json" \
       -H "X-GitHub-Api-Version: 2022-11-28" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "ghcr: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -903,11 +934,12 @@ __apimgr_paginate_glcr() {
   next_url="${base%/}/${path#/}"
   while [ -n "$next_url" ]; do
     hdr="$(mktemp -t apimgr.XXXXXX)"
-    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+    page_data="$(curl -q -LSs --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
       -D "$hdr" \
       -H "PRIVATE-TOKEN: $token" \
       -H "Accept: application/json" \
-      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; __apimgr_die "glcr: network error fetching $next_url"; }
+    __apimgr_check_api_response "$page_data" "$next_url" || { rm -f "$hdr"; return 1; }
     if [ -n "$key" ]; then
       merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
     else
@@ -4934,21 +4966,21 @@ while :; do
     __gen_config
     exit $?
     ;;
-  --repo)        APIMGR_REPO="$2"; shift 2 ;;
-  --user)        APIMGR_USER="$2"; shift 2 ;;
-  --org)         APIMGR_ORG="$2"; shift 2 ;;
-  --token)       APIMGR_TOKEN_OVERRIDE="$2"; shift 2 ;;
+  --repo)        APIMGR_SET_REPO="$2"; shift 2 ;;
+  --user)        APIMGR_SET_USER="$2"; shift 2 ;;
+  --org)         APIMGR_SET_ORG="$2"; shift 2 ;;
+  --token)       APIMGR_SET_TOKEN="$2"; shift 2 ;;
   --official)    APIMGR_OFFICIAL="true"; shift 1 ;;
-  --title)       APIMGR_TITLE="$2"; shift 2 ;;
-  --body)        APIMGR_BODY="$2"; shift 2 ;;
-  --state)       APIMGR_STATE="$2"; shift 2 ;;
-  --limit)       APIMGR_LIMIT="$2"; shift 2 ;;
-  --branch)      APIMGR_BRANCH="$2"; shift 2 ;;
-  --base)        APIMGR_BASE="$2"; shift 2 ;;
-  --tag)         APIMGR_TAG="$2"; shift 2 ;;
-  --format)      APIMGR_FORMAT="$2"; shift 2 ;;
-  --visibility)  APIMGR_VISIBILITY="$2"; shift 2 ;;
-  --provider)    APIMGR_PROVIDER="$2"; shift 2 ;;
+  --title)       APIMGR_SET_TITLE="$2"; shift 2 ;;
+  --body)        APIMGR_SET_BODY="$2"; shift 2 ;;
+  --state)       APIMGR_SET_STATE="$2"; shift 2 ;;
+  --limit)       APIMGR_SET_LIMIT="$2"; shift 2 ;;
+  --branch)      APIMGR_SET_BRANCH="$2"; shift 2 ;;
+  --base)        APIMGR_SET_BASE="$2"; shift 2 ;;
+  --tag)         APIMGR_SET_TAG="$2"; shift 2 ;;
+  --format)      APIMGR_SET_FORMAT="$2"; shift 2 ;;
+  --visibility)  APIMGR_SET_VISIBILITY="$2"; shift 2 ;;
+  --provider)    APIMGR_SET_PROVIDER="$2"; shift 2 ;;
   --api)         APIMGR_API_RAW="true"; shift 1 ;;
   --all)         APIMGR_ALL="true"; shift 1 ;;
   --force)
@@ -4992,6 +5024,22 @@ done
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # Set directory to first argument
 # [ -d "$1" ] && __is_an_option "$1" && APIMGR_CWD="$1" && shift 1 || APIMGR_CWD="${APIMGR_CWD:-$PWD}"
+# Resolve CLI flag overrides — APIMGR_SET_* wins over any env/config value.
+[ -n "${APIMGR_SET_REPO:-}"       ] && APIMGR_REPO="$APIMGR_SET_REPO"
+[ -n "${APIMGR_SET_USER:-}"       ] && APIMGR_USER="$APIMGR_SET_USER"
+[ -n "${APIMGR_SET_ORG:-}"        ] && APIMGR_ORG="$APIMGR_SET_ORG"
+[ -n "${APIMGR_SET_TOKEN:-}"      ] && APIMGR_TOKEN_OVERRIDE="$APIMGR_SET_TOKEN"
+[ -n "${APIMGR_SET_TITLE:-}"      ] && APIMGR_TITLE="$APIMGR_SET_TITLE"
+[ -n "${APIMGR_SET_BODY:-}"       ] && APIMGR_BODY="$APIMGR_SET_BODY"
+[ -n "${APIMGR_SET_STATE:-}"      ] && APIMGR_STATE="$APIMGR_SET_STATE"
+[ -n "${APIMGR_SET_LIMIT:-}"      ] && APIMGR_LIMIT="$APIMGR_SET_LIMIT"
+[ -n "${APIMGR_SET_BRANCH:-}"     ] && APIMGR_BRANCH="$APIMGR_SET_BRANCH"
+[ -n "${APIMGR_SET_BASE:-}"       ] && APIMGR_BASE="$APIMGR_SET_BASE"
+[ -n "${APIMGR_SET_TAG:-}"        ] && APIMGR_TAG="$APIMGR_SET_TAG"
+[ -n "${APIMGR_SET_FORMAT:-}"     ] && APIMGR_FORMAT="$APIMGR_SET_FORMAT"
+[ -n "${APIMGR_SET_VISIBILITY:-}" ] && APIMGR_VISIBILITY="$APIMGR_SET_VISIBILITY"
+[ -n "${APIMGR_SET_PROVIDER:-}"   ] && APIMGR_PROVIDER="$APIMGR_SET_PROVIDER"
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 APIMGR_CWD="$(realpath "${APIMGR_CWD:-$PWD}" 2>/dev/null)"
 # if [ -d "$APIMGR_CWD" ] && cd "$APIMGR_CWD"; then
 # if [ "$APIMGR_SILENT" != "true" ] && [ "$CWD_SILENCE" != "true" ]; then
