@@ -3,7 +3,6 @@
   filemode = true
   bare = false
   logallrefupdates = true
-	hooksPath = /root/Projects/github/casjay-dotfiles/scripts/.git/hooks
 
 [remote "origin"]
   fetch = +refs/heads/*:refs/remotes/origin/*
