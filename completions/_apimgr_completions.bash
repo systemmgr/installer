@@ -143,27 +143,29 @@ _apimgr_completion() {
       return 0
       ;;
     issue)
-      COMPREPLY=($(compgen -W 'list get create close comment all' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create close comment' -- "$cur"))
       return 0
       ;;
     pr|pull|pulls|mr)
-      COMPREPLY=($(compgen -W 'list get create merge close all' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create merge close' -- "$cur"))
       return 0
       ;;
     release|releases|rel)
-      COMPREPLY=($(compgen -W 'list get create delete all' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create delete' -- "$cur"))
       return 0
       ;;
     tag|tags|image|images)
-      COMPREPLY=($(compgen -W 'list get create delete all' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create delete' -- "$cur"))
       return 0
       ;;
     actions|action|workflow|workflows|runs)
-      COMPREPLY=($(compgen -W 'list log all' -- "$cur"))
+      # "all" is not a direct subcommand — use "list all" or "log delete all"
+      COMPREPLY=($(compgen -W 'list log' -- "$cur"))
       return 0
       ;;
     pipeline|pipelines|ci|cicd)
-      COMPREPLY=($(compgen -W 'list delete all' -- "$cur"))
+      # "all" is not a direct subcommand — use "list all" or "delete all"
+      COMPREPLY=($(compgen -W 'list delete' -- "$cur"))
       return 0
       ;;
     log|logs)
