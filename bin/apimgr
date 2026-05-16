@@ -117,7 +117,7 @@ if [ -n "${NO_COLOR+x}" ] || [ "$SHOW_RAW" = "true" ]; then
   ICON_WARN="[ warn ]"
   ICON_ERROR="[ error ]"
   ICON_QUESTION="[ ? ]"
-  printf_column() { tee | grep '^'; }
+  printf_column() { tee | grep -- '^'; }
   printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
 else
   printf_color() { printf "%b" "$(tput setaf "${2:-7}" 2>/dev/null)" "$1" "$(tput sgr0 2>/dev/null)"; }
@@ -241,11 +241,16 @@ __help() {
   __printf_line "                                  Registries (docker/harbor/quay): image tags (--repo NS/NAME, --tag NAME)."
   __printf_line "                                  list all: return every page of results"
   __printf_line "actions [list [all]|log view RUN_ID|log delete RUN_ID|log delete all]"
-  __printf_line "                                - GitHub Actions only."
+  __printf_line "                                - CI/CD workflow run ops (github/gitea/forgejo/codeberg)"
   __printf_line "                                  list [all]: workflow runs; all = every page"
-  __printf_line "                                  log view RUN_ID: pre-signed URL for the run's log archive (ZIP)"
-  __printf_line "                                  log delete RUN_ID: delete logs for one run"
-  __printf_line "                                  log delete all: delete logs for every run in the repo"
+  __printf_line "                                  log view RUN_ID: download the run's log archive (ZIP)"
+  __printf_line "                                  log delete RUN_ID: delete logs for one run (github only)"
+  __printf_line "                                  log delete all: delete logs for every run in the repo (github only)"
+  __printf_line "pipeline [list [all]|delete ID|purge]"
+  __printf_line "                                - CI/CD pipeline ops (gitlab/bitbucket)"
+  __printf_line "                                  list [all]: pipelines; all = every page"
+  __printf_line "                                  delete ID: delete one pipeline with all jobs/logs/artifacts (gitlab only)"
+  __printf_line "                                  purge: delete every pipeline in the repo (gitlab only)"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
   __printf_opts "Top-level shortcuts (no provider — auto-detect or default)"
   __printf_head "- - - - - - - - - - - - - - - - - - - - - - - - -"
@@ -721,6 +726,315 @@ __apimgr_paginate_github() {
   printf '%s\n' "$merged"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic Gitea-family paginator (Gitea/Forgejo/Codeberg). Follows Link rel="next" headers.
+# Usage: __apimgr_paginate_gitea PROVIDER PATH [KEY]
+#   PROVIDER — gitea|forgejo|codeberg
+#   PATH     — API path (limit already embedded or omitted)
+#   KEY      — optional jq key for item array (omit when response is a bare array)
+__apimgr_paginate_gitea() {
+  local provider="$1" path="$2" key="${3:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__apimgr_provider_url "$provider")" || return 1
+  token="$(__apimgr_provider_token "$provider")" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "Authorization: token $token" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic GitLab paginator. Follows Link rel="next" headers with PRIVATE-TOKEN auth.
+# Usage: __apimgr_paginate_gitlab PATH [KEY]
+__apimgr_paginate_gitlab() {
+  local path="$1" key="${2:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__apimgr_provider_url gitlab)" || return 1
+  token="$(__apimgr_provider_token gitlab)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "PRIVATE-TOKEN: $token" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic Gitee paginator. Follows Link rel="next" headers with token auth.
+# Usage: __apimgr_paginate_gitee PATH [KEY]
+__apimgr_paginate_gitee() {
+  local path="$1" key="${2:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__apimgr_provider_url gitee)" || return 1
+  token="$(__apimgr_provider_token gitee)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "Authorization: token $token" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic Harbor paginator. Follows Link rel="next" headers with Basic or Bearer auth.
+# Usage: __apimgr_paginate_harbor PATH [KEY]
+__apimgr_paginate_harbor() {
+  local path="$1" key="${2:-}"
+  local base pass user next_url page_data merged="[]" hdr auth_hdr
+  base="$(__apimgr_provider_url harbor)" || return 1
+  pass="$(__apimgr_provider_token harbor)" || return 1
+  user="$(__apimgr_provider_username harbor 2>/dev/null)"
+  if [ -n "$user" ]; then
+    local creds; creds="$(printf '%s:%s' "$user" "$pass" | base64 -w0)"
+    auth_hdr="Basic $creds"
+  else
+    auth_hdr="Bearer $pass"
+  fi
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "Authorization: $auth_hdr" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic Cloudsmith paginator. Follows Link rel="next" headers with X-Api-Key auth.
+# Usage: __apimgr_paginate_cloudsmith PATH [KEY]
+__apimgr_paginate_cloudsmith() {
+  local path="$1" key="${2:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__apimgr_provider_url cloudsmith)" || return 1
+  token="$(__apimgr_provider_token cloudsmith)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "X-Api-Key: $token" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic GHCR paginator. Follows Link rel="next" headers with GitHub Bearer auth.
+# Usage: __apimgr_paginate_ghcr PATH [KEY]
+__apimgr_paginate_ghcr() {
+  local path="$1" key="${2:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__apimgr_provider_url ghcr)" || return 1
+  token="$(__apimgr_provider_token ghcr)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "Authorization: Bearer $token" \
+      -H "Accept: application/vnd.github+json" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Generic GLCR paginator. Follows Link rel="next" headers. Falls back to gitlab creds if glcr-specific unset.
+# Usage: __apimgr_paginate_glcr PATH [KEY]
+__apimgr_paginate_glcr() {
+  local path="$1" key="${2:-}"
+  local base token next_url page_data merged="[]" hdr
+  base="$(__glcr_url)" || return 1
+  token="$(__apimgr_provider_token glcr 2>/dev/null)"; [ -n "$token" ] || token="$(__apimgr_provider_token gitlab)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    hdr="$(mktemp -t apimgr.XXXXXX)"
+    page_data="$(curl -q -LSsf --max-time "${APIMGR_API_TIMEOUT:-10}" --retry "${APIMGR_API_RETRY:-1}" \
+      -D "$hdr" \
+      -H "PRIVATE-TOKEN: $token" \
+      -H "Accept: application/json" \
+      -X GET "$next_url" 2>/dev/null)" || { rm -f "$hdr"; return 1; }
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    next_url="$(__grep -i -- '^[Ll]ink:' "$hdr" | __grep -o -- '<[^>]*>; rel="next"' | __grep -o -- '<[^>]*>' | tr -d '<>')"
+    rm -f "$hdr"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Bitbucket paginator. next URL is in JSON body (.next field). key defaults to "values".
+# Usage: __apimgr_paginate_bitbucket PATH [KEY]
+# Note: __bitbucket_api only accepts relative paths; we call __bitbucket_curl directly with absolute URLs.
+__apimgr_paginate_bitbucket() {
+  local path="$1" key="${2:-values}"
+  local base next_url page_data merged="[]"
+  base="$(__apimgr_provider_url bitbucket)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    page_data="$(__bitbucket_curl -X GET "$next_url" 2>/dev/null)" || return 1
+    merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    next_url="$(__apimgr_jq -r '.next // empty' <<<"$page_data" 2>/dev/null)"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Pagure paginator. next URL is in JSON body under a *_pagination key.
+# Usage: __apimgr_paginate_pagure PATH DATA_KEY PAG_KEY
+#   DATA_KEY — jq key for the item array (e.g. "projects", "issues", "requests")
+#   PAG_KEY  — jq key for the pagination object (e.g. "pagination", "pagination_requests")
+# Note: __pagure_api only accepts relative paths; we call __pagure_curl directly with absolute URLs.
+__apimgr_paginate_pagure() {
+  local path="$1" data_key="$2" pag_key="$3"
+  local base next_url page_data merged="[]"
+  base="$(__apimgr_provider_url pagure)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    page_data="$(__pagure_curl -X GET "$next_url" 2>/dev/null)" || return 1
+    merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$data_key" '$a + ($b[$k] // [])')"
+    next_url="$(__apimgr_jq -r --arg pk "$pag_key" '.[$pk].next // empty' <<<"$page_data" 2>/dev/null)"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Quay paginator. Uses page increment + has_additional boolean field in JSON body.
+# Usage: __apimgr_paginate_quay PATH [KEY]
+# PATH should NOT include page/limit params — they are appended here.
+__apimgr_paginate_quay() {
+  local path="$1" key="${2:-}"
+  local base pg=1 page_data merged="[]" has_more="true" sep full
+  base="$(__apimgr_provider_url quay)" || return 1
+  # Determine separator for appending page/limit params.
+  case "$path" in *'?'*) sep="&" ;; *) sep="?" ;; esac
+  while [ "$has_more" = "true" ]; do
+    full="${base%/}/${path#/}${sep}page=${pg}&limit=100"
+    page_data="$(__quay_curl -X GET "$full" 2>/dev/null)" || return 1
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+    fi
+    has_more="$(__apimgr_jq -r '.has_additional // "false"' <<<"$page_data" 2>/dev/null)"
+    pg=$((pg + 1))
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Nexus paginator. Uses continuationToken in body. Fixed 50 items per page.
+# Usage: __apimgr_paginate_nexus PATH [KEY]
+# Note: __nexus_api only accepts relative paths; we call __nexus_curl directly with absolute URLs.
+__apimgr_paginate_nexus() {
+  local path="$1" key="${2:-items}"
+  local base next_token page_data merged="[]" url sep
+  base="$(__apimgr_provider_url nexus)" || return 1
+  url="${base%/}/${path#/}"
+  while true; do
+    page_data="$(__nexus_curl -X GET "$url" 2>/dev/null)" || return 1
+    merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    next_token="$(__apimgr_jq -r '.continuationToken // empty' <<<"$page_data" 2>/dev/null)"
+    [ -n "$next_token" ] || break
+    case "$url" in *'?'*) sep="&" ;; *) sep="?" ;; esac
+    url="${url}${sep}continuationToken=${next_token}"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# OneDev paginator. Uses offset+count; stops when returned count < page size (100).
+# Usage: __apimgr_paginate_onedev PATH [KEY]
+# Note: __onedev_api only accepts relative paths; we call __onedev_curl directly with absolute URLs.
+__apimgr_paginate_onedev() {
+  local path="$1" key="${2:-}"
+  local base offset=0 count=100 page_data merged="[]" n full sep
+  base="$(__apimgr_provider_url onedev)" || return 1
+  while true; do
+    case "$path" in *'?'*) sep="&" ;; *) sep="?" ;; esac
+    full="${base%/}/${path#/}${sep}offset=${offset}&count=${count}"
+    page_data="$(__onedev_curl -X GET "$full" 2>/dev/null)" || return 1
+    if [ -n "$key" ]; then
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+      n="$(__apimgr_jq -n --argjson b "$page_data" --arg k "$key" '($b[$k] // []) | length')"
+    else
+      merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" '$a + if ($b | type) == "array" then $b else [] end')"
+      n="$(__apimgr_jq -n --argjson b "$page_data" 'if ($b | type) == "array" then $b | length else 0 end')"
+    fi
+    [ "${n:-0}" -ge "$count" ] || break
+    offset=$((offset + count))
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+# Docker Hub paginator. next URL is in JSON body (.next field). key defaults to "results".
+# Usage: __apimgr_paginate_docker PATH [KEY]
+# Note: __docker_api only accepts relative paths; we call __docker_curl directly with absolute URLs.
+__apimgr_paginate_docker() {
+  local path="$1" key="${2:-results}"
+  local base next_url page_data merged="[]"
+  base="$(__apimgr_provider_url docker)" || return 1
+  next_url="${base%/}/${path#/}"
+  while [ -n "$next_url" ]; do
+    page_data="$(__docker_curl -X GET "$next_url" 2>/dev/null)" || return 1
+    merged="$(__apimgr_jq -n --argjson a "$merged" --argjson b "$page_data" --arg k "$key" '$a + ($b[$k] // [])')"
+    next_url="$(__apimgr_jq -r '.next // empty' <<<"$page_data" 2>/dev/null)"
+  done
+  printf '%s\n' "$merged"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
 # ============== GitHub provider (api.github.com or GitHub Enterprise) ==============
 __github_curl() {
   local token; token="$(__apimgr_provider_token github)" || return 1
@@ -1110,14 +1424,24 @@ __gitea_org_all() {
   local provider="$1"
   __apimgr_require_creds "$provider"
   [ -n "$APIMGR_ORG" ] || __apimgr_die "$provider org all: --org NAME required"
-  __gitea_api "$provider" GET "/orgs/$APIMGR_ORG/repos?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/orgs/$APIMGR_ORG/repos?limit=50" | __apimgr_print_repo_list
+  else
+    __gitea_api "$provider" GET "/orgs/$APIMGR_ORG/repos?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_repo_list
+  fi
 }
 __gitea_repo_list() {
   local provider="$1"
   __apimgr_require_creds "$provider"
   local path="/repos/search?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
+  local path_all="/repos/search?limit=50"
   [ -n "$APIMGR_USER" ] && path="/users/$APIMGR_USER/repos?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
-  __gitea_api "$provider" GET "$path" | __apimgr_jq '.data // .' | __apimgr_print_repo_list
+  [ -n "$APIMGR_USER" ] && path_all="/users/$APIMGR_USER/repos?limit=50"
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "$path_all" | __apimgr_jq '.data // .' | __apimgr_print_repo_list
+  else
+    __gitea_api "$provider" GET "$path" | __apimgr_jq '.data // .' | __apimgr_print_repo_list
+  fi
 }
 __gitea_repo_get() {
   local provider="$1"
@@ -1161,8 +1485,12 @@ __gitea_issue_list() {
   __apimgr_require_creds "$provider"
   __gitea_issue_repo "$provider"
   local state; state="$(__apimgr_state_for "$provider")"
-  __gitea_api "$provider" GET "/repos/$APIMGR_REPO/issues?state=$state&type=issues&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
-    __apimgr_print_issue_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/repos/$APIMGR_REPO/issues?state=$state&type=issues&limit=50" | __apimgr_print_issue_list
+  else
+    __gitea_api "$provider" GET "/repos/$APIMGR_REPO/issues?state=$state&type=issues&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
+      __apimgr_print_issue_list
+  fi
 }
 __gitea_issue_get() {
   local provider="$1" n="$2"
@@ -1212,7 +1540,11 @@ __gitea_pr_list() {
   __apimgr_require_creds "$provider"
   __gitea_pr_repo "$provider"
   local state; state="$(__apimgr_state_for "$provider")"
-  __gitea_api "$provider" GET "/repos/$APIMGR_REPO/pulls?state=$state&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/repos/$APIMGR_REPO/pulls?state=$state&limit=50" | __apimgr_print_pr_list
+  else
+    __gitea_api "$provider" GET "/repos/$APIMGR_REPO/pulls?state=$state&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  fi
 }
 __gitea_pr_get() {
   local provider="$1" n="$2"
@@ -1252,7 +1584,11 @@ __gitea_release_list() {
   local provider="$1"
   __apimgr_require_creds "$provider"
   __gitea_release_repo "$provider"
-  __gitea_api "$provider" GET "/repos/$APIMGR_REPO/releases?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/repos/$APIMGR_REPO/releases?limit=50" | __apimgr_print_release_list
+  else
+    __gitea_api "$provider" GET "/repos/$APIMGR_REPO/releases?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  fi
 }
 __gitea_release_get() {
   local provider="$1" key="$2"
@@ -1297,7 +1633,11 @@ __gitea_tag_list() {
   local provider="$1"
   __apimgr_require_creds "$provider"
   __gitea_tag_repo "$provider"
-  __gitea_api "$provider" GET "/repos/$APIMGR_REPO/tags?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_git_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/repos/$APIMGR_REPO/tags?limit=50" | __apimgr_print_git_tag_list
+  else
+    __gitea_api "$provider" GET "/repos/$APIMGR_REPO/tags?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_git_tag_list
+  fi
 }
 __gitea_tag_get() {
   local provider="$1" tag="${APIMGR_TAG:-$2}"
@@ -1323,6 +1663,41 @@ __gitea_tag_delete() {
   [ -n "$tag" ] || __apimgr_die "$provider tag delete: --tag NAME or positional TAG required"
   __apimgr_confirm "Delete tag '$tag' from $APIMGR_REPO?" || { printf_yellow "Aborted"; return 1; }
   __gitea_api "$provider" DELETE "/repos/$APIMGR_REPO/tags/$tag" >/dev/null && printf_green "Deleted tag '$tag' from $APIMGR_REPO"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__gitea_actions_repo() {
+  # Resolve $APIMGR_REPO for actions calls (same logic as tag_repo helpers)
+  __apimgr_resolve_repo || __apimgr_die "gitea actions: --repo USER/REPO required"
+}
+__gitea_actions_run_list() {
+  local provider="$1"
+  __apimgr_require_creds "$provider"
+  __gitea_actions_repo
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitea "$provider" "/repos/$APIMGR_REPO/actions/runs?limit=50" "workflow_runs" | \
+      __apimgr_jq -r '.[] | "\(.id)\t\(.name // .display_title // "")\t\(.status)\t\(.conclusion // "")\t\(.head_branch // "")"'
+  else
+    __gitea_api "$provider" GET "/repos/$APIMGR_REPO/actions/runs?limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | \
+      __apimgr_jq -r '.workflow_runs[]? | "\(.id)\t\(.name // .display_title // "")\t\(.status)\t\(.conclusion // "")\t\(.head_branch // "")"'
+  fi
+}
+__gitea_actions_log_view() {
+  # Download run logs for a given run ID. Gitea API returns a zip archive.
+  local provider="$1" run_id="${APIMGR_RUN_ID:-$2}"
+  __apimgr_require_creds "$provider"
+  __gitea_actions_repo
+  [ -n "$run_id" ] || __apimgr_die "$provider actions log view: run ID required (positional or --run-id ID)"
+  local base; base="$(__apimgr_provider_url "$provider")" || return 1
+  local token; token="$(__apimgr_provider_token "$provider")" || return 1
+  local out; out="$(mktemp -t apimgr.XXXXXX)"
+  __apimgr_curl -H "Authorization: token $token" \
+    "${base%/}/repos/$APIMGR_REPO/actions/runs/$run_id/logs" -o "$out"
+  if file "$out" 2>/dev/null | __grep -qi -- 'zip'; then
+    printf 'Logs saved as zip: %s\n' "$out"
+  else
+    cat "$out"
+    rm -f "$out"
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # ============== GitLab provider (api.v4 — uses PRIVATE-TOKEN header and URL-encoded namespace/path) ==============
@@ -1364,22 +1739,36 @@ __gitlab_org_get() {
 __gitlab_org_all() {
   __apimgr_require_creds gitlab
   [ -n "$APIMGR_ORG" ] || __apimgr_die "gitlab org all: --org NAME required"
-  __gitlab_api GET "/groups/$(__gitlab_urlenc "$APIMGR_ORG")/projects?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}&include_subgroups=true" |
-    __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
-    awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/groups/$(__gitlab_urlenc "$APIMGR_ORG")/projects?per_page=100&include_subgroups=true" |
+      __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
+      awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  else
+    __gitlab_api GET "/groups/$(__gitlab_urlenc "$APIMGR_ORG")/projects?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}&include_subgroups=true" |
+      __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
+      awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  fi
 }
 __gitlab_repo_list() {
   __apimgr_require_creds gitlab
-  local path
+  local path path_all
   if [ -n "$APIMGR_USER" ]; then
     path="/users/$(__gitlab_urlenc "$APIMGR_USER")/projects?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
+    path_all="/users/$(__gitlab_urlenc "$APIMGR_USER")/projects?per_page=100"
   else
     # /projects?membership=true returns all repos the authed user has any role in.
     path="/projects?membership=true&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
+    path_all="/projects?membership=true&per_page=100"
   fi
-  __gitlab_api GET "$path" |
-    __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
-    awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "$path_all" |
+      __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
+      awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  else
+    __gitlab_api GET "$path" |
+      __apimgr_jq -r '.[] | "\(.path_with_namespace)\t\(.description // "")\t\(.visibility)"' |
+      awk -F'\t' 'BEGIN{OFS=" │ "} {printf "%-45s %-50s %s\n", $1, substr($2,1,48), $3}'
+  fi
 }
 __gitlab_repo_get() {
   __apimgr_require_creds gitlab
@@ -1430,8 +1819,12 @@ __gitlab_issue_list() {
   __apimgr_require_creds gitlab
   __gitlab_issue_repo
   local state; state="$(__apimgr_state_for gitlab)"
-  __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/issues?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
-    __apimgr_print_issue_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/issues?state=$state&per_page=100" | __apimgr_print_issue_list
+  else
+    __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/issues?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
+      __apimgr_print_issue_list
+  fi
 }
 __gitlab_issue_get() {
   local n="$1"
@@ -1476,7 +1869,11 @@ __gitlab_pr_list() {
   __apimgr_require_creds gitlab
   __gitlab_pr_repo
   local state; state="$(__apimgr_state_for gitlab)"
-  __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/merge_requests?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/merge_requests?state=$state&per_page=100" | __apimgr_print_pr_list
+  else
+    __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/merge_requests?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  fi
 }
 __gitlab_pr_get() {
   local n="$1"
@@ -1515,7 +1912,11 @@ __gitlab_release_repo() { __apimgr_resolve_repo || __apimgr_die "gitlab release:
 __gitlab_release_list() {
   __apimgr_require_creds gitlab
   __gitlab_release_repo
-  __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/releases?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/releases?per_page=100" | __apimgr_print_release_list
+  else
+    __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/releases?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  fi
 }
 __gitlab_release_get() {
   local key="$1"
@@ -1552,7 +1953,11 @@ __gitlab_tag_repo() { __apimgr_resolve_repo || __apimgr_die "gitlab tag: --repo 
 __gitlab_tag_list() {
   __apimgr_require_creds gitlab
   __gitlab_tag_repo
-  __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/repository/tags?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_git_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/repository/tags?per_page=100" | __apimgr_print_git_tag_list
+  else
+    __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/repository/tags?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_git_tag_list
+  fi
 }
 __gitlab_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -1576,6 +1981,44 @@ __gitlab_tag_delete() {
   [ -n "$tag" ] || __apimgr_die "gitlab tag delete: --tag NAME or positional TAG required"
   __apimgr_confirm "Delete tag '$tag' from $APIMGR_REPO?" || { printf_yellow "Aborted"; return 1; }
   __gitlab_api DELETE "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/repository/tags/$(__gitlab_urlenc "$tag")" >/dev/null && printf_green "Deleted tag '$tag' from $APIMGR_REPO"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__gitlab_pipeline_repo() {
+  __apimgr_resolve_repo || __apimgr_die "gitlab pipeline: --repo USER/REPO required"
+}
+__gitlab_pipeline_list() {
+  __apimgr_require_creds gitlab
+  __gitlab_pipeline_repo
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/pipelines?per_page=100" | \
+      __apimgr_jq -r '.[] | "\(.id)\t\(.status)\t\(.ref)\t\(.created_at // "")"'
+  else
+    __gitlab_api GET "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/pipelines?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | \
+      __apimgr_jq -r '.[] | "\(.id)\t\(.status)\t\(.ref)\t\(.created_at // "")"'
+  fi
+}
+__gitlab_pipeline_delete() {
+  local pipeline_id="${APIMGR_PIPELINE_ID:-$1}"
+  __apimgr_require_creds gitlab
+  __gitlab_pipeline_repo
+  [ -n "$pipeline_id" ] || __apimgr_die "gitlab pipeline delete: pipeline ID required (positional or --pipeline-id ID)"
+  __apimgr_confirm "Delete GitLab pipeline $pipeline_id (and all its jobs/logs/artifacts) from $APIMGR_REPO?" || { printf_yellow "Aborted"; return 1; }
+  __gitlab_api DELETE "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/pipelines/$pipeline_id" >/dev/null && \
+    printf_green "Deleted pipeline $pipeline_id from $APIMGR_REPO"
+}
+__gitlab_pipelines_delete_all() {
+  __apimgr_require_creds gitlab
+  __gitlab_pipeline_repo
+  __apimgr_confirm "Delete ALL pipelines (and jobs/logs/artifacts) from $APIMGR_REPO? This cannot be undone." || { printf_yellow "Aborted"; return 1; }
+  local ids
+  ids="$(__apimgr_paginate_gitlab "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/pipelines?per_page=100" | __apimgr_jq -r '.[].id')"
+  [ -n "$ids" ] || { printf_yellow "No pipelines found in $APIMGR_REPO"; return 0; }
+  local id
+  while IFS= read -r id; do
+    [ -n "$id" ] || continue
+    __gitlab_api DELETE "/projects/$(__gitlab_urlenc "$APIMGR_REPO")/pipelines/$id" >/dev/null && \
+      printf_green "Deleted pipeline $id"
+  done <<<"$ids"
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # ============== Bitbucket Cloud provider (api v2.0 — workspaces/repositories/{slug}, paginated {values:[]} wrappers) ==============
@@ -1646,13 +2089,23 @@ __bitbucket_org_get() {
 __bitbucket_org_all() {
   __apimgr_require_creds bitbucket
   [ -n "$APIMGR_ORG" ] || __apimgr_die "bitbucket org all: --org WORKSPACE required"
-  __bitbucket_api GET "/repositories/$APIMGR_ORG?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "/repositories/$APIMGR_ORG?pagelen=100" | __bitbucket_print_repo_list
+  else
+    __bitbucket_api GET "/repositories/$APIMGR_ORG?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_repo_list
+  fi
 }
 __bitbucket_repo_list() {
   __apimgr_require_creds bitbucket
   local path="/repositories?role=member&pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
+  local path_all="/repositories?role=member&pagelen=100"
   [ -n "$APIMGR_USER" ] && path="/repositories/$APIMGR_USER?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
-  __bitbucket_api GET "$path" | __bitbucket_unwrap | __bitbucket_print_repo_list
+  [ -n "$APIMGR_USER" ] && path_all="/repositories/$APIMGR_USER?pagelen=100"
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "$path_all" | __bitbucket_print_repo_list
+  else
+    __bitbucket_api GET "$path" | __bitbucket_unwrap | __bitbucket_print_repo_list
+  fi
 }
 __bitbucket_repo_get() {
   __apimgr_require_creds bitbucket
@@ -1682,7 +2135,11 @@ __bitbucket_issue_list() {
   __bitbucket_repo_check
   local state; state="$(__apimgr_state_for bitbucket issue)"
   local q=""; [ -n "$state" ] && q="?q=state%3D%22$state%22&"
-  __bitbucket_api GET "/repositories/$APIMGR_REPO/issues${q}pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_issue_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "/repositories/$APIMGR_REPO/issues${q}pagelen=100" | __bitbucket_print_issue_list
+  else
+    __bitbucket_api GET "/repositories/$APIMGR_REPO/issues${q}pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_issue_list
+  fi
 }
 __bitbucket_issue_get() {
   local n="$1"
@@ -1735,7 +2192,11 @@ __bitbucket_pr_list() {
   __apimgr_require_creds bitbucket
   __bitbucket_repo_check
   local state; state="$(__apimgr_state_for bitbucket pr)"
-  __bitbucket_api GET "/repositories/$APIMGR_REPO/pullrequests?state=$state&pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_pr_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "/repositories/$APIMGR_REPO/pullrequests?state=$state&pagelen=100" | __bitbucket_print_pr_list
+  else
+    __bitbucket_api GET "/repositories/$APIMGR_REPO/pullrequests?state=$state&pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __bitbucket_print_pr_list
+  fi
 }
 __bitbucket_pr_get() {
   local n="$1"
@@ -1790,7 +2251,11 @@ __bitbucket_tag_repo() { __apimgr_resolve_repo || __apimgr_die "bitbucket tag: -
 __bitbucket_tag_list() {
   __apimgr_require_creds bitbucket
   __bitbucket_tag_repo
-  __bitbucket_api GET "/repositories/$APIMGR_REPO/refs/tags?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __apimgr_print_git_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "/repositories/$APIMGR_REPO/refs/tags?pagelen=100" | __apimgr_print_git_tag_list
+  else
+    __bitbucket_api GET "/repositories/$APIMGR_REPO/refs/tags?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __bitbucket_unwrap | __apimgr_print_git_tag_list
+  fi
 }
 __bitbucket_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -1814,6 +2279,23 @@ __bitbucket_tag_delete() {
   [ -n "$tag" ] || __apimgr_die "bitbucket tag delete: --tag NAME or positional TAG required"
   __apimgr_confirm "Delete tag '$tag' from $APIMGR_REPO?" || { printf_yellow "Aborted"; return 1; }
   __bitbucket_api DELETE "/repositories/$APIMGR_REPO/refs/tags/$tag" >/dev/null && printf_green "Deleted tag '$tag' from $APIMGR_REPO"
+}
+# - - - - - - - - - - - - - - - - - - - - - - - - -
+__bitbucket_pipeline_repo() {
+  __apimgr_resolve_repo || __apimgr_die "bitbucket pipeline: --repo USER/REPO required"
+}
+__bitbucket_pipeline_list() {
+  __apimgr_require_creds bitbucket
+  __bitbucket_pipeline_repo
+  local base; base="$(__apimgr_provider_url bitbucket)" || return 1
+  local token; token="$(__apimgr_provider_token bitbucket)" || return 1
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_bitbucket "/repositories/$APIMGR_REPO/pipelines/?pagelen=100&sort=-created_on" "values" | \
+      __apimgr_jq -r '.[] | "\(.build_number)\t\(.state.name // "")\t\(.target.ref_name // "")\t\(.created_on // "")"'
+  else
+    __bitbucket_api GET "/repositories/$APIMGR_REPO/pipelines/?pagelen=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}&sort=-created_on" | \
+      __apimgr_jq -r '.values[]? | "\(.build_number)\t\(.state.name // "")\t\(.target.ref_name // "")\t\(.created_on // "")"'
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # ============== Gitee provider (gitee.com/api/v5 — github-shaped API with `Authorization: token` auth) ==============
@@ -1845,13 +2327,23 @@ __gitee_org_get() {
 __gitee_org_all() {
   __apimgr_require_creds gitee
   [ -n "$APIMGR_ORG" ] || __apimgr_die "gitee org all: --org NAME required"
-  __gitee_api GET "/orgs/$APIMGR_ORG/repos?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitee "/orgs/$APIMGR_ORG/repos?per_page=100" | __apimgr_print_repo_list
+  else
+    __gitee_api GET "/orgs/$APIMGR_ORG/repos?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_repo_list
+  fi
 }
 __gitee_repo_list() {
   __apimgr_require_creds gitee
   local path="/user/repos?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
+  local path_all="/user/repos?per_page=100"
   [ -n "$APIMGR_USER" ] && path="/users/$APIMGR_USER/repos?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
-  __gitee_api GET "$path" | __apimgr_print_repo_list
+  [ -n "$APIMGR_USER" ] && path_all="/users/$APIMGR_USER/repos?per_page=100"
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitee "$path_all" | __apimgr_print_repo_list
+  else
+    __gitee_api GET "$path" | __apimgr_print_repo_list
+  fi
 }
 __gitee_repo_get() {
   __apimgr_require_creds gitee
@@ -1886,7 +2378,11 @@ __gitee_issue_list() {
   __apimgr_require_creds gitee
   __gitee_issue_repo
   local state; state="$(__apimgr_state_for gitee)"
-  __gitee_api GET "/repos/$APIMGR_REPO/issues?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_issue_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitee "/repos/$APIMGR_REPO/issues?state=$state&per_page=100" | __apimgr_print_issue_list
+  else
+    __gitee_api GET "/repos/$APIMGR_REPO/issues?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_issue_list
+  fi
 }
 __gitee_issue_get() {
   local n="$1"
@@ -1932,7 +2428,11 @@ __gitee_pr_list() {
   __apimgr_require_creds gitee
   __gitee_issue_repo
   local state; state="$(__apimgr_state_for gitee)"
-  __gitee_api GET "/repos/$APIMGR_REPO/pulls?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitee "/repos/$APIMGR_REPO/pulls?state=$state&per_page=100" | __apimgr_print_pr_list
+  else
+    __gitee_api GET "/repos/$APIMGR_REPO/pulls?state=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_pr_list
+  fi
 }
 __gitee_pr_get() {
   local n="$1"
@@ -1968,7 +2468,11 @@ __gitee_pr_close() {
 __gitee_release_list() {
   __apimgr_require_creds gitee
   __gitee_repo_check
-  __gitee_api GET "/repos/$APIMGR_REPO/releases?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_gitee "/repos/$APIMGR_REPO/releases?per_page=100" | __apimgr_print_release_list
+  else
+    __gitee_api GET "/repos/$APIMGR_REPO/releases?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_print_release_list
+  fi
 }
 __gitee_release_get() {
   local key="$1"
@@ -2083,14 +2587,22 @@ __pagure_org_all() {
   __apimgr_require_creds pagure
   [ -n "$APIMGR_ORG" ] || __apimgr_die "pagure org all: --org GROUP required"
   # Pagure: /projects?username=X&owner=group lists projects owned by group.
-  __pagure_api GET "/projects?owner=$APIMGR_ORG&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_pagure "/projects?owner=$APIMGR_ORG&per_page=100" "projects" "pagination" | __pagure_print_repo_list
+  else
+    __pagure_api GET "/projects?owner=$APIMGR_ORG&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_repo_list
+  fi
 }
 __pagure_repo_list() {
   __apimgr_require_creds pagure
   local who="${APIMGR_USER:-${APIMGR_ORG:-}}"
   [ -n "$who" ] || who="$(__pagure_api GET /-/whoami | __apimgr_jq -r '.username // empty')"
   [ -n "$who" ] || __apimgr_die "pagure repo list: --user or --org required"
-  __pagure_api GET "/projects?username=$who&fork=false&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_pagure "/projects?username=$who&fork=false&per_page=100" "projects" "pagination" | __pagure_print_repo_list
+  else
+    __pagure_api GET "/projects?username=$who&fork=false&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_repo_list
+  fi
 }
 __pagure_repo_get() {
   __apimgr_require_creds pagure
@@ -2121,7 +2633,11 @@ __pagure_issue_list() {
   local state="${APIMGR_STATE:-Open}"
   # Pagure uses Open/Closed (capitalized) for status. Translate apimgr's open/closed.
   case "$state" in open|Open) state="Open" ;; closed|Closed) state="Closed" ;; all|All) state="All" ;; esac
-  __pagure_api GET "/$APIMGR_REPO/issues?status=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_issue_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_pagure "/$APIMGR_REPO/issues?status=$state&per_page=100" "issues" "pagination" | __pagure_print_issue_list
+  else
+    __pagure_api GET "/$APIMGR_REPO/issues?status=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_issue_list
+  fi
 }
 __pagure_issue_get() {
   local n="$1"
@@ -2177,7 +2693,11 @@ __pagure_pr_list() {
   __pagure_issue_repo
   local state="${APIMGR_STATE:-Open}"
   case "$state" in open|Open) state="Open" ;; closed|Closed) state="Closed" ;; merged|Merged) state="Merged" ;; all|All) state="All" ;; esac
-  __pagure_api GET "/$APIMGR_REPO/pull-requests?status=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_pr_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_pagure "/$APIMGR_REPO/pull-requests?status=$state&per_page=100" "requests" "pagination_requests" | __pagure_print_pr_list
+  else
+    __pagure_api GET "/$APIMGR_REPO/pull-requests?status=$state&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __pagure_print_pr_list
+  fi
 }
 __pagure_pr_get() {
   local n="$1"
@@ -2397,7 +2917,11 @@ __onedev_user_get() {
 }
 __onedev_repo_list() {
   __apimgr_require_creds onedev
-  __onedev_api GET "/projects?count=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __onedev_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_onedev "/projects" | __onedev_print_repo_list
+  else
+    __onedev_api GET "/projects?count=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __onedev_print_repo_list
+  fi
 }
 __onedev_repo_get() {
   __apimgr_require_creds onedev
@@ -2422,8 +2946,13 @@ __onedev_issue_list() {
   __apimgr_require_creds onedev
   local id; id="$(__onedev_project_id)"
   local q="?count=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}"
-  case "${APIMGR_STATE:-open}" in open) q="$q&state=Open" ;; closed) q="$q&state=Closed" ;; esac
-  __onedev_api GET "/projects/$id/issues$q" | __onedev_print_issue_list
+  local q_all="?"
+  case "${APIMGR_STATE:-open}" in open) q="$q&state=Open" ; q_all="${q_all}state=Open&" ;; closed) q="$q&state=Closed" ; q_all="${q_all}state=Closed&" ;; esac
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_onedev "/projects/$id/issues${q_all%&}" | __onedev_print_issue_list
+  else
+    __onedev_api GET "/projects/$id/issues$q" | __onedev_print_issue_list
+  fi
 }
 __onedev_issue_get() {
   local n="$1"
@@ -2442,9 +2971,15 @@ __onedev_issue_create() {
 __onedev_pr_list() {
   __apimgr_require_creds onedev
   local id; id="$(__onedev_project_id)"
-  __onedev_api GET "/projects/$id/pull-requests?count=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
-    __apimgr_jq -r '.[] | "#\(.number)\t\(.status)\t\(.submitter.name // "")\t\(.sourceBranch)→\(.targetBranch)\t\(.title)"' |
-    awk -F'\t' '{printf "%-7s %-12s %-18s %-30s %s\n", $1, substr($2,1,12), substr($3,1,18), substr($4,1,30), $5}'
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_onedev "/projects/$id/pull-requests" |
+      __apimgr_jq -r '.[] | "#\(.number)\t\(.status)\t\(.submitter.name // "")\t\(.sourceBranch)→\(.targetBranch)\t\(.title)"' |
+      awk -F'\t' '{printf "%-7s %-12s %-18s %-30s %s\n", $1, substr($2,1,12), substr($3,1,18), substr($4,1,30), $5}'
+  else
+    __onedev_api GET "/projects/$id/pull-requests?count=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" |
+      __apimgr_jq -r '.[] | "#\(.number)\t\(.status)\t\(.submitter.name // "")\t\(.sourceBranch)→\(.targetBranch)\t\(.title)"' |
+      awk -F'\t' '{printf "%-7s %-12s %-18s %-30s %s\n", $1, substr($2,1,12), substr($3,1,18), substr($4,1,30), $5}'
+  fi
 }
 __onedev_pr_get() {
   local n="$1"
@@ -2456,7 +2991,11 @@ __onedev_pr_get() {
 __onedev_tag_list() {
   __apimgr_require_creds onedev
   local id; id="$(__onedev_project_id)"
-  __onedev_api GET "/projects/$id/tags" | __apimgr_print_git_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_onedev "/projects/$id/tags" | __apimgr_print_git_tag_list
+  else
+    __onedev_api GET "/projects/$id/tags" | __apimgr_print_git_tag_list
+  fi
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - -
 # ============== Docker Hub provider (hub.docker.com/v2 — JWT auth via login flow) ==============
@@ -2536,13 +3075,21 @@ __docker_org_get() {
 __docker_org_all() {
   __apimgr_require_creds docker
   [ -n "$APIMGR_ORG" ] || __apimgr_die "docker org all: --org NAMESPACE required"
-  __docker_api GET "/repositories/$APIMGR_ORG/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_docker "/repositories/$APIMGR_ORG/?page_size=100" | __docker_print_repo_list
+  else
+    __docker_api GET "/repositories/$APIMGR_ORG/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_repo_list
+  fi
 }
 __docker_repo_list() {
   __apimgr_require_creds docker
   local ns="${APIMGR_USER:-${APIMGR_ORG:-$(__docker_jwt_user)}}"
   [ -n "$ns" ] || __apimgr_die "docker repo list: namespace unresolved — pass --user or --org"
-  __docker_api GET "/repositories/$ns/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_docker "/repositories/$ns/?page_size=100" | __docker_print_repo_list
+  else
+    __docker_api GET "/repositories/$ns/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_repo_list
+  fi
 }
 __docker_repo_get() {
   __apimgr_require_creds docker
@@ -2562,7 +3109,11 @@ __docker_tag_repo() { __apimgr_resolve_repo || __apimgr_die "docker tag: --repo 
 __docker_tag_list() {
   __apimgr_require_creds docker
   __docker_tag_repo
-  __docker_api GET "/repositories/$APIMGR_REPO/tags/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_docker "/repositories/$APIMGR_REPO/tags/?page_size=100" | __docker_print_tag_list
+  else
+    __docker_api GET "/repositories/$APIMGR_REPO/tags/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __apimgr_jq '.results // .' | __docker_print_tag_list
+  fi
 }
 __docker_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -2630,16 +3181,28 @@ __ghcr_org_get() {
 __ghcr_org_all() {
   __apimgr_require_creds ghcr
   [ -n "$APIMGR_ORG" ] || __apimgr_die "ghcr org all: --org NAME required"
-  __ghcr_api GET "/orgs/$APIMGR_ORG/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_ghcr "/orgs/$APIMGR_ORG/packages?package_type=container&per_page=100" | __ghcr_print_repo_list
+  else
+    __ghcr_api GET "/orgs/$APIMGR_ORG/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+  fi
 }
 __ghcr_repo_list() {
   __apimgr_require_creds ghcr
   if [ -n "$APIMGR_ORG" ]; then
     __ghcr_org_all
   elif [ -n "$APIMGR_USER" ]; then
-    __ghcr_api GET "/users/$APIMGR_USER/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+    if [ "${APIMGR_ALL:-}" = "true" ]; then
+      __apimgr_paginate_ghcr "/users/$APIMGR_USER/packages?package_type=container&per_page=100" | __ghcr_print_repo_list
+    else
+      __ghcr_api GET "/users/$APIMGR_USER/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+    fi
   else
-    __ghcr_api GET "/user/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+    if [ "${APIMGR_ALL:-}" = "true" ]; then
+      __apimgr_paginate_ghcr "/user/packages?package_type=container&per_page=100" | __ghcr_print_repo_list
+    else
+      __ghcr_api GET "/user/packages?package_type=container&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_repo_list
+    fi
   fi
 }
 # Resolve OWNER and NAME from --repo OWNER/NAME. Sets GHCR_OWNER and GHCR_NAME for action helpers.
@@ -2686,10 +3249,19 @@ __ghcr_tag_list() {
   __apimgr_require_creds ghcr
   __ghcr_split_repo
   if __ghcr_owner_is_self; then
-    __ghcr_api GET "/user/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_tag_list
+    if [ "${APIMGR_ALL:-}" = "true" ]; then
+      __apimgr_paginate_ghcr "/user/packages/container/$GHCR_NAME/versions?per_page=100" | __ghcr_print_tag_list
+    else
+      __ghcr_api GET "/user/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_tag_list
+    fi
   else
-    __ghcr_api GET "/users/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" 2>/dev/null | __ghcr_print_tag_list \
-      || __ghcr_api GET "/orgs/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_tag_list
+    if [ "${APIMGR_ALL:-}" = "true" ]; then
+      __apimgr_paginate_ghcr "/users/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=100" 2>/dev/null | __ghcr_print_tag_list \
+        || __apimgr_paginate_ghcr "/orgs/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=100" | __ghcr_print_tag_list
+    else
+      __ghcr_api GET "/users/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" 2>/dev/null | __ghcr_print_tag_list \
+        || __ghcr_api GET "/orgs/$GHCR_OWNER/packages/container/$GHCR_NAME/versions?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __ghcr_print_tag_list
+    fi
   fi
 }
 # GHCR addresses versions by numeric id, not by tag name. Resolve a tag → id via the versions list.
@@ -2802,7 +3374,11 @@ __glcr_repo_list() {
   __glcr_require_creds
   __glcr_split_repo
   [ -n "$GLCR_PROJECT_PATH" ] || __apimgr_die "glcr repo list: --repo PROJECT_PATH required"
-  __glcr_api GET "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories?tags=true&tags_count=true&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __glcr_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_glcr "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories?tags=true&tags_count=true&per_page=100" | __glcr_print_repo_list
+  else
+    __glcr_api GET "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories?tags=true&tags_count=true&per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __glcr_print_repo_list
+  fi
 }
 __glcr_repo_get() {
   __glcr_require_creds
@@ -2825,7 +3401,11 @@ __glcr_tag_list() {
   __glcr_split_repo
   local id; id="$(__glcr_resolve_registry_id "$GLCR_IMAGE_NAME")"
   [ -n "$id" ] || __apimgr_die "glcr tag list: registry repository not found"
-  __glcr_api GET "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories/$id/tags?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __glcr_print_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_glcr "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories/$id/tags?per_page=100" | __glcr_print_tag_list
+  else
+    __glcr_api GET "/projects/$(__gitlab_urlenc "$GLCR_PROJECT_PATH")/registry/repositories/$id/tags?per_page=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __glcr_print_tag_list
+  fi
 }
 __glcr_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -2917,13 +3497,21 @@ __harbor_org_get() {
 __harbor_org_all() {
   __apimgr_require_creds harbor
   [ -n "$APIMGR_ORG" ] || __apimgr_die "harbor org all: --org PROJECT required"
-  __harbor_api GET "/projects/$APIMGR_ORG/repositories?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_harbor "/projects/$APIMGR_ORG/repositories?page_size=100" | __harbor_print_repo_list
+  else
+    __harbor_api GET "/projects/$APIMGR_ORG/repositories?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_repo_list
+  fi
 }
 __harbor_repo_list() {
   __apimgr_require_creds harbor
   local proj="${APIMGR_ORG:-${APIMGR_USER:-}}"
   [ -n "$proj" ] || __apimgr_die "harbor repo list: --org PROJECT (or --user) required to scope the listing"
-  __harbor_api GET "/projects/$proj/repositories?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_harbor "/projects/$proj/repositories?page_size=100" | __harbor_print_repo_list
+  else
+    __harbor_api GET "/projects/$proj/repositories?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_repo_list
+  fi
 }
 __harbor_repo_get() {
   __apimgr_require_creds harbor
@@ -2942,7 +3530,11 @@ __harbor_repo_all() {
 __harbor_tag_list() {
   __apimgr_require_creds harbor
   __harbor_split_repo
-  __harbor_api GET "/projects/$HARBOR_PROJECT/repositories/$HARBOR_REPO_NAME_ENC/artifacts?with_tag=true&page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_harbor "/projects/$HARBOR_PROJECT/repositories/$HARBOR_REPO_NAME_ENC/artifacts?with_tag=true&page_size=100" | __harbor_print_tag_list
+  else
+    __harbor_api GET "/projects/$HARBOR_PROJECT/repositories/$HARBOR_REPO_NAME_ENC/artifacts?with_tag=true&page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __harbor_print_tag_list
+  fi
 }
 __harbor_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -3014,7 +3606,11 @@ __quay_org_get() {
 __quay_org_all() {
   __apimgr_require_creds quay
   [ -n "$APIMGR_ORG" ] || __apimgr_die "quay org all: --org NAMESPACE required"
-  __quay_api GET "/repository?namespace=$APIMGR_ORG&public=true" | __quay_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_quay "/repository?namespace=$APIMGR_ORG&public=true&limit=100" "repositories" | __quay_print_repo_list
+  else
+    __quay_api GET "/repository?namespace=$APIMGR_ORG&public=true" | __quay_print_repo_list
+  fi
 }
 __quay_repo_list() {
   __apimgr_require_creds quay
@@ -3024,7 +3620,11 @@ __quay_repo_list() {
     ns="$(__quay_api GET /user/ | __apimgr_jq -r '.username // empty')"
   fi
   [ -n "$ns" ] || __apimgr_die "quay repo list: namespace unresolved"
-  __quay_api GET "/repository?namespace=$ns" | __quay_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_quay "/repository?namespace=$ns&limit=100" "repositories" | __quay_print_repo_list
+  else
+    __quay_api GET "/repository?namespace=$ns" | __quay_print_repo_list
+  fi
 }
 __quay_repo_get() {
   __apimgr_require_creds quay
@@ -3044,7 +3644,11 @@ __quay_tag_repo() { __apimgr_resolve_repo || __apimgr_die "quay tag: --repo NAME
 __quay_tag_list() {
   __apimgr_require_creds quay
   __quay_tag_repo
-  __quay_api GET "/repository/$APIMGR_REPO/tag/?onlyActiveTags=true&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __quay_print_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_quay "/repository/$APIMGR_REPO/tag/?onlyActiveTags=true&limit=100" "tags" | __quay_print_tag_list
+  else
+    __quay_api GET "/repository/$APIMGR_REPO/tag/?onlyActiveTags=true&limit=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __quay_print_tag_list
+  fi
 }
 __quay_tag_get() {
   local tag="${APIMGR_TAG:-$1}"
@@ -3122,7 +3726,11 @@ __cloudsmith_org_get() {
 __cloudsmith_org_all() {
   __apimgr_require_creds cloudsmith
   [ -n "$APIMGR_ORG" ] || __apimgr_die "cloudsmith org all: --org NAMESPACE required"
-  __cloudsmith_api GET "/repos/$APIMGR_ORG/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_cloudsmith "/repos/$APIMGR_ORG/?page_size=100" | __cloudsmith_print_repo_list
+  else
+    __cloudsmith_api GET "/repos/$APIMGR_ORG/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_repo_list
+  fi
 }
 __cloudsmith_repo_list() {
   __apimgr_require_creds cloudsmith
@@ -3131,7 +3739,11 @@ __cloudsmith_repo_list() {
     ns="$(__cloudsmith_api GET /user/self/ | __apimgr_jq -r '.slug // empty')"
   fi
   [ -n "$ns" ] || __apimgr_die "cloudsmith repo list: namespace unresolved"
-  __cloudsmith_api GET "/repos/$ns/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_repo_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_cloudsmith "/repos/$ns/?page_size=100" | __cloudsmith_print_repo_list
+  else
+    __cloudsmith_api GET "/repos/$ns/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_repo_list
+  fi
 }
 __cloudsmith_repo_get() {
   __apimgr_require_creds cloudsmith
@@ -3160,7 +3772,11 @@ __cloudsmith_tag_repo() { __apimgr_resolve_repo || __apimgr_die "cloudsmith tag:
 __cloudsmith_tag_list() {
   __apimgr_require_creds cloudsmith
   __cloudsmith_tag_repo
-  __cloudsmith_api GET "/packages/$APIMGR_REPO/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_tag_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_cloudsmith "/packages/$APIMGR_REPO/?page_size=100" | __cloudsmith_print_tag_list
+  else
+    __cloudsmith_api GET "/packages/$APIMGR_REPO/?page_size=${APIMGR_LIMIT:-${APIMGR_DEFAULT_LIMIT:-30}}" | __cloudsmith_print_tag_list
+  fi
 }
 __cloudsmith_tag_get() {
   local slug="${APIMGR_TAG:-$1}"
@@ -3229,7 +3845,8 @@ __artifactory_user_get() {
 }
 __artifactory_repo_list() {
   __apimgr_require_creds artifactory
-  # Optional ?type=local|remote|virtual filter via APIMGR_TAG (overloaded for now since there's no --type flag).
+  # Optional ?type=local|remote|virtual filter via APIMGR_VISIBILITY.
+  # Artifactory /repositories returns all repos in one call — no pagination needed; 'list all' is identical.
   local q=""; [ -n "$APIMGR_VISIBILITY" ] && q="?type=$APIMGR_VISIBILITY"
   __artifactory_api GET "/repositories$q" | __artifactory_print_repo_list
 }
@@ -3368,7 +3985,11 @@ __nexus_tag_list() {
   __apimgr_require_creds nexus
   __apimgr_resolve_repo || __apimgr_die "nexus tag list: --repo NAME required"
   local key="${APIMGR_REPO##*/}"
-  __nexus_api GET "/components?repository=$key" | __nexus_print_component_list
+  if [ "${APIMGR_ALL:-}" = "true" ]; then
+    __apimgr_paginate_nexus "/components?repository=$key" | __nexus_print_component_list
+  else
+    __nexus_api GET "/components?repository=$key" | __nexus_print_component_list
+  fi
 }
 __nexus_tag_get() {
   local cid="${APIMGR_TAG:-$1}"
@@ -3486,56 +4107,79 @@ __apimgr_dispatch_provider() {
         user)                 __gitea_user_get "$provider" ;;
         org)
           case "$sub" in
-            all)              __gitea_org_all "$provider" ;;
+            all)              APIMGR_ALL="true"; __gitea_org_all "$provider" ;;
             *)                __gitea_org_get "$provider" ;;
           esac ;;
         repo)
           case "$sub" in
-            list)             __gitea_repo_list "$provider" ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_repo_list "$provider" ;;
             get|"")           __gitea_repo_get "$provider" ;;
             create)           __gitea_repo_create "$provider" ;;
             delete|rm)        __gitea_repo_delete "$provider" ;;
-            all)              __gitea_repo_all "$provider" ;;
-            *)                __apimgr_die "$provider repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
+            all)              APIMGR_ALL="true"; __gitea_repo_all "$provider" ;;
+            *)                __apimgr_die "$provider repo: unknown sub '$sub' (try list [all]|get|create|delete|all)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __gitea_issue_list "$provider" ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_issue_list "$provider" ;;
             get|show)         __gitea_issue_get "$provider" "$1" ;;
             create|new)       __gitea_issue_create "$provider" ;;
             close)            __gitea_issue_close "$provider" "$1" ;;
             comment)          __gitea_issue_comment "$provider" "$1" ;;
-            *)                __apimgr_die "$provider issue: unknown sub '$sub' (try list|get|create|close|comment)" ;;
+            *)                __apimgr_die "$provider issue: unknown sub '$sub' (try list [all]|get|create|close|comment)" ;;
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __gitea_pr_list "$provider" ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_pr_list "$provider" ;;
             get|show)         __gitea_pr_get "$provider" "$1" ;;
             create|new)       __gitea_pr_create "$provider" ;;
             merge)            __gitea_pr_merge "$provider" "$1" ;;
             close)            __gitea_pr_close "$provider" "$1" ;;
-            *)                __apimgr_die "$provider pr: unknown sub '$sub' (try list|get|create|merge|close)" ;;
+            *)                __apimgr_die "$provider pr: unknown sub '$sub' (try list [all]|get|create|merge|close)" ;;
           esac ;;
         release|releases|rel)
           case "$sub" in
-            list|"")          __gitea_release_list "$provider" ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_release_list "$provider" ;;
             get|show)         __gitea_release_get "$provider" "$1" ;;
             create|new)       __gitea_release_create "$provider" ;;
             delete|rm)        __gitea_release_delete "$provider" "$1" ;;
-            *)                __apimgr_die "$provider release: unknown sub '$sub' (try list|get|create|delete)" ;;
+            *)                __apimgr_die "$provider release: unknown sub '$sub' (try list [all]|get|create|delete)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __gitea_tag_list "$provider" ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_tag_list "$provider" ;;
             get|show)         __gitea_tag_get "$provider" "$1" ;;
             create|new)       __gitea_tag_create "$provider" ;;
             delete|rm)        __gitea_tag_delete "$provider" "$1" ;;
-            *)                __apimgr_die "$provider tag: unknown sub '$sub' (try list|get|create|delete)" ;;
+            *)                __apimgr_die "$provider tag: unknown sub '$sub' (try list [all]|get|create|delete)" ;;
+          esac ;;
+        actions|action|workflow|workflows|runs)
+          case "$sub" in
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitea_actions_run_list "$provider" ;;
+            log)
+              local _gv="${1:-}" _ga="${2:-}"
+              case "$_gv" in
+                view|show|get)  __gitea_actions_log_view "$provider" "$_ga" ;;
+                *)              __apimgr_die "$provider actions log: try view RUN_ID" ;;
+              esac ;;
+            *)   __apimgr_die "$provider actions: try list [all]|log view RUN_ID" ;;
           esac ;;
         api)
           [ -n "$sub" ] || __apimgr_die "$provider api: PATH required"
           __gitea_api "$provider" GET "$sub" ;;
-        *)                    __apimgr_die "$provider: unknown action '$action'. Try: verify|user|org|repo|issue|pr|release|tag|api" ;;
+        *)                    __apimgr_die "$provider: unknown action '$action'. Try: verify|user|org|repo|issue|pr|release|tag|actions|api" ;;
       esac ;;
     gitlab)
       case "$action" in
@@ -3543,21 +4187,25 @@ __apimgr_dispatch_provider() {
         user)                 __gitlab_user_get ;;
         org)
           case "$sub" in
-            all)              __gitlab_org_all ;;
+            all)              APIMGR_ALL="true"; __gitlab_org_all ;;
             *)                __gitlab_org_get ;;
           esac ;;
         repo)
           case "$sub" in
-            list)             __gitlab_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_repo_list ;;
             get|"")           __gitlab_repo_get ;;
             create)           __gitlab_repo_create ;;
             delete|rm)        __gitlab_repo_delete ;;
-            all)              __gitlab_repo_all ;;
+            all)              APIMGR_ALL="true"; __gitlab_repo_all ;;
             *)                __apimgr_die "gitlab repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __gitlab_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_issue_list ;;
             get|show)         __gitlab_issue_get "$1" ;;
             create|new)       __gitlab_issue_create ;;
             close)            __gitlab_issue_close "$1" ;;
@@ -3566,7 +4214,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __gitlab_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_pr_list ;;
             get|show)         __gitlab_pr_get "$1" ;;
             create|new)       __gitlab_pr_create ;;
             merge)            __gitlab_pr_merge "$1" ;;
@@ -3575,7 +4225,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         release|releases|rel)
           case "$sub" in
-            list|"")          __gitlab_release_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_release_list ;;
             get|show)         __gitlab_release_get "$1" ;;
             create|new)       __gitlab_release_create ;;
             delete|rm)        __gitlab_release_delete "$1" ;;
@@ -3583,16 +4235,30 @@ __apimgr_dispatch_provider() {
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __gitlab_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_tag_list ;;
             get|show)         __gitlab_tag_get "$1" ;;
             create|new)       __gitlab_tag_create ;;
             delete|rm)        __gitlab_tag_delete "$1" ;;
             *)                __apimgr_die "gitlab tag: unknown sub '$sub' (try list|get|create|delete)" ;;
           esac ;;
+        pipeline|pipelines|ci|cicd)
+          case "$sub" in
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitlab_pipeline_list ;;
+            delete|rm|del)
+              case "${1:-}" in
+                all)  __gitlab_pipelines_delete_all ;;
+                *)    __gitlab_pipeline_delete "$1" ;;
+              esac ;;
+            *)  __apimgr_die "gitlab pipeline: try list [all]|delete PIPELINE_ID|delete all" ;;
+          esac ;;
         api)
           [ -n "$sub" ] || __apimgr_die "gitlab api: PATH required (e.g. apimgr gitlab api /version)"
           __gitlab_api GET "$sub" ;;
-        *)                    __apimgr_die "gitlab: unknown action '$action'. Try: verify|user|org|repo|issue|pr|release|tag|api" ;;
+        *)                    __apimgr_die "gitlab: unknown action '$action'. Try: verify|user|org|repo|issue|pr|release|tag|pipeline|api" ;;
       esac ;;
     bitbucket)
       case "$action" in
@@ -3600,21 +4266,25 @@ __apimgr_dispatch_provider() {
         user)                 __bitbucket_user_get ;;
         org|workspace)
           case "$sub" in
-            all)              __bitbucket_org_all ;;
+            all)              APIMGR_ALL="true"; __bitbucket_org_all ;;
             *)                __bitbucket_org_get ;;
           esac ;;
         repo)
           case "$sub" in
-            list)             __bitbucket_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __bitbucket_repo_list ;;
             get|"")           __bitbucket_repo_get ;;
             create)           __bitbucket_repo_create ;;
             delete|rm)        __bitbucket_repo_delete ;;
-            all)              __bitbucket_repo_all ;;
+            all)              APIMGR_ALL="true"; __bitbucket_repo_all ;;
             *)                __apimgr_die "bitbucket repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __bitbucket_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __bitbucket_issue_list ;;
             get|show)         __bitbucket_issue_get "$1" ;;
             create|new)       __bitbucket_issue_create ;;
             close)            __bitbucket_issue_close "$1" ;;
@@ -3623,7 +4293,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __bitbucket_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __bitbucket_pr_list ;;
             get|show)         __bitbucket_pr_get "$1" ;;
             create|new)       __bitbucket_pr_create ;;
             merge)            __bitbucket_pr_merge "$1" ;;
@@ -3634,16 +4306,25 @@ __apimgr_dispatch_provider() {
           __bitbucket_release_unsupported ;;
         tag|tags)
           case "$sub" in
-            list|"")          __bitbucket_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __bitbucket_tag_list ;;
             get|show)         __bitbucket_tag_get "$1" ;;
             create|new)       __bitbucket_tag_create ;;
             delete|rm)        __bitbucket_tag_delete "$1" ;;
             *)                __apimgr_die "bitbucket tag: unknown sub '$sub' (try list|get|create|delete)" ;;
           esac ;;
+        pipeline|pipelines|ci)
+          case "$sub" in
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __bitbucket_pipeline_list ;;
+            *)                __apimgr_die "bitbucket pipeline: unknown sub '$sub' (try list [all])" ;;
+          esac ;;
         api)
           [ -n "$sub" ] || __apimgr_die "bitbucket api: PATH required (e.g. apimgr bitbucket api /user)"
           __bitbucket_api GET "$sub" ;;
-        *)                    __apimgr_die "bitbucket: unknown action '$action'. Try: verify|user|org|repo|issue|pr|tag|api" ;;
+        *)                    __apimgr_die "bitbucket: unknown action '$action'. Try: verify|user|org|repo|issue|pr|tag|pipeline|api" ;;
       esac ;;
     gitee)
       case "$action" in
@@ -3651,21 +4332,25 @@ __apimgr_dispatch_provider() {
         user)                 __gitee_user_get ;;
         org)
           case "$sub" in
-            all)              __gitee_org_all ;;
+            all)              APIMGR_ALL="true"; __gitee_org_all ;;
             *)                __gitee_org_get ;;
           esac ;;
         repo)
           case "$sub" in
-            list)             __gitee_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitee_repo_list ;;
             get|"")           __gitee_repo_get ;;
             create)           __gitee_repo_create ;;
             delete|rm)        __gitee_repo_delete ;;
-            all)              __gitee_repo_all ;;
+            all)              APIMGR_ALL="true"; __gitee_repo_all ;;
             *)                __apimgr_die "gitee repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __gitee_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitee_issue_list ;;
             get|show)         __gitee_issue_get "$1" ;;
             create|new)       __gitee_issue_create ;;
             close)            __gitee_issue_close "$1" ;;
@@ -3674,7 +4359,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __gitee_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitee_pr_list ;;
             get|show)         __gitee_pr_get "$1" ;;
             create|new)       __gitee_pr_create ;;
             merge)            __gitee_pr_merge "$1" ;;
@@ -3683,7 +4370,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         release|releases|rel)
           case "$sub" in
-            list|"")          __gitee_release_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitee_release_list ;;
             get|show)         __gitee_release_get "$1" ;;
             create|new)       __gitee_release_create ;;
             delete|rm)        __gitee_release_delete "$1" ;;
@@ -3691,7 +4380,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __gitee_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __gitee_tag_list ;;
             create|new)       __gitee_tag_create ;;
             delete|rm)        __gitee_tag_delete "$1" ;;
             *)                __apimgr_die "gitee tag: unknown sub '$sub' (try list|create|delete — gitee has no get-tag endpoint)" ;;
@@ -3707,21 +4398,25 @@ __apimgr_dispatch_provider() {
         user)                 __pagure_user_get ;;
         org|group)
           case "$sub" in
-            all)              __pagure_org_all ;;
+            all)              APIMGR_ALL="true"; __pagure_org_all ;;
             *)                __pagure_org_get ;;
           esac ;;
         repo)
           case "$sub" in
-            list)             __pagure_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __pagure_repo_list ;;
             get|"")           __pagure_repo_get ;;
             create)           __pagure_repo_create ;;
             delete|rm)        __pagure_repo_delete ;;
-            all)              __pagure_repo_all ;;
+            all)              APIMGR_ALL="true"; __pagure_repo_all ;;
             *)                __apimgr_die "pagure repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __pagure_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __pagure_issue_list ;;
             get|show)         __pagure_issue_get "$1" ;;
             create|new)       __pagure_issue_create ;;
             close)            __pagure_issue_close "$1" ;;
@@ -3730,7 +4425,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __pagure_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __pagure_pr_list ;;
             get|show)         __pagure_pr_get "$1" ;;
             merge)            __pagure_pr_merge "$1" ;;
             close)            __pagure_pr_close "$1" ;;
@@ -3739,7 +4436,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __pagure_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __pagure_tag_list ;;
             *)                __apimgr_die "pagure tag: only 'list' supported via API (create/delete are not exposed)" ;;
           esac ;;
         release|releases|rel)
@@ -3755,7 +4454,12 @@ __apimgr_dispatch_provider() {
         user)                 __sourcehut_user_get ;;
         repo)
           case "$sub" in
-            list)             __sourcehut_repo_list ;;
+            list)
+              if [ "${1:-}" = "all" ]; then
+                printf 'sourcehut: list all is not supported (REST API deprecated; use GraphQL directly)\n' >&2
+              else
+                __sourcehut_repo_list
+              fi ;;
             get|"")           __sourcehut_repo_get ;;
             create)           __sourcehut_repo_create ;;
             delete|rm)        __sourcehut_repo_delete ;;
@@ -3782,28 +4486,37 @@ __apimgr_dispatch_provider() {
         user)                 __onedev_user_get ;;
         repo)
           case "$sub" in
-            list)             __onedev_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __onedev_repo_list ;;
             get|"")           __onedev_repo_get ;;
             create)           __onedev_repo_create ;;
             delete|rm)        __onedev_repo_delete ;;
+            all)              APIMGR_ALL="true"; __onedev_repo_list ;;
             *)                __apimgr_die "onedev repo: unknown sub '$sub' (try list|get|create|delete)" ;;
           esac ;;
         issue)
           case "$sub" in
-            list|"")          __onedev_issue_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __onedev_issue_list ;;
             get|show)         __onedev_issue_get "$1" ;;
             create|new)       __onedev_issue_create ;;
             *)                __apimgr_die "onedev issue: unknown sub '$sub' (try list|get|create)" ;;
           esac ;;
         pr|pull|pulls|mr)
           case "$sub" in
-            list|"")          __onedev_pr_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __onedev_pr_list ;;
             get|show)         __onedev_pr_get "$1" ;;
             *)                __apimgr_die "onedev pr: unknown sub '$sub' (try list|get — create/merge need raw api with branch IDs)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __onedev_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __onedev_tag_list ;;
             *)                __apimgr_die "onedev tag: only 'list' supported via apimgr (create/delete need raw api)" ;;
           esac ;;
         org)                  __apimgr_die "onedev has no orgs/namespaces — projects sit at the top level. Use 'repo list' instead." ;;
@@ -3819,20 +4532,24 @@ __apimgr_dispatch_provider() {
         user)                 __docker_user_get ;;
         org|namespace)
           case "$sub" in
-            all)              __docker_org_all ;;
+            all)              APIMGR_ALL="true"; __docker_org_all ;;
             *)                __docker_org_get ;;
           esac ;;
         repo|repos|repositories|image|images)
           case "$sub" in
-            list)             __docker_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __docker_repo_list ;;
             get|"")           __docker_repo_get ;;
             delete|rm)        __docker_repo_delete ;;
-            all)              __docker_repo_all ;;
+            all)              APIMGR_ALL="true"; __docker_repo_all ;;
             *)                __apimgr_die "docker repo: unknown sub '$sub' (try list|get|delete|all)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __docker_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __docker_tag_list ;;
             get|show)         __docker_tag_get "$1" ;;
             delete|rm)        __docker_tag_delete "$1" ;;
             *)                __apimgr_die "docker tag: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3848,21 +4565,25 @@ __apimgr_dispatch_provider() {
         user)                 __ghcr_user_get ;;
         org)
           case "$sub" in
-            all)              __ghcr_org_all ;;
+            all)              APIMGR_ALL="true"; __ghcr_org_all ;;
             *)                __ghcr_org_get ;;
           esac ;;
         repo|repos|repositories|image|images|package|packages)
           case "$sub" in
-            list)             __ghcr_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __ghcr_repo_list ;;
             get|"")           __ghcr_repo_get ;;
             create)           __ghcr_repo_create ;;
             delete|rm)        __ghcr_repo_delete ;;
-            all)              __ghcr_repo_all ;;
+            all)              APIMGR_ALL="true"; __ghcr_repo_all ;;
             *)                __apimgr_die "ghcr repo: unknown sub '$sub' (try list|get|delete|all — create is push-only)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __ghcr_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __ghcr_tag_list ;;
             get|show)         __ghcr_tag_get "$1" ;;
             delete|rm)        __ghcr_tag_delete "$1" ;;
             *)                __apimgr_die "ghcr tag: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3877,14 +4598,18 @@ __apimgr_dispatch_provider() {
         verify)               __glcr_verify ;;
         repo|repos|repositories|image|images)
           case "$sub" in
-            list)             __glcr_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __glcr_repo_list ;;
             get|"")           __glcr_repo_get ;;
             delete|rm)        __glcr_repo_delete ;;
             *)                __apimgr_die "glcr repo: unknown sub '$sub' (try list|get|delete — create is push-only via 'docker push registry.gitlab.com/...')" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __glcr_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __glcr_tag_list ;;
             get|show)         __glcr_tag_get "$1" ;;
             delete|rm)        __glcr_tag_delete "$1" ;;
             *)                __apimgr_die "glcr tag: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3901,20 +4626,24 @@ __apimgr_dispatch_provider() {
         user)                 __harbor_user_get ;;
         org|project|namespace)
           case "$sub" in
-            all)              __harbor_org_all ;;
+            all)              APIMGR_ALL="true"; __harbor_org_all ;;
             *)                __harbor_org_get ;;
           esac ;;
         repo|repos|repositories|image|images)
           case "$sub" in
-            list)             __harbor_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __harbor_repo_list ;;
             get|"")           __harbor_repo_get ;;
             delete|rm)        __harbor_repo_delete ;;
-            all)              __harbor_repo_all ;;
+            all)              APIMGR_ALL="true"; __harbor_repo_all ;;
             *)                __apimgr_die "harbor repo: unknown sub '$sub' (try list|get|delete|all)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __harbor_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __harbor_tag_list ;;
             get|show)         __harbor_tag_get "$1" ;;
             delete|rm)        __harbor_tag_delete "$1" ;;
             *)                __apimgr_die "harbor tag: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3930,20 +4659,24 @@ __apimgr_dispatch_provider() {
         user)                 __quay_user_get ;;
         org|namespace|organization)
           case "$sub" in
-            all)              __quay_org_all ;;
+            all)              APIMGR_ALL="true"; __quay_org_all ;;
             *)                __quay_org_get ;;
           esac ;;
         repo|repos|repositories|image|images)
           case "$sub" in
-            list)             __quay_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __quay_repo_list ;;
             get|"")           __quay_repo_get ;;
             delete|rm)        __quay_repo_delete ;;
-            all)              __quay_repo_all ;;
+            all)              APIMGR_ALL="true"; __quay_repo_all ;;
             *)                __apimgr_die "quay repo: unknown sub '$sub' (try list|get|delete|all)" ;;
           esac ;;
         tag|tags)
           case "$sub" in
-            list|"")          __quay_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __quay_tag_list ;;
             get|show)         __quay_tag_get "$1" ;;
             delete|rm)        __quay_tag_delete "$1" ;;
             *)                __apimgr_die "quay tag: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3967,7 +4700,9 @@ __apimgr_dispatch_provider() {
           esac ;;
         tag|tags|component|components)
           case "$sub" in
-            list|"")          __nexus_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __nexus_tag_list ;;
             get|show)         __nexus_tag_get "$1" ;;
             delete|rm)        __nexus_tag_delete "$1" ;;
             *)                __apimgr_die "nexus tag/component: unknown sub '$sub' (try list|get|delete)" ;;
@@ -3988,6 +4723,7 @@ __apimgr_dispatch_provider() {
             get|"")           __artifactory_repo_get ;;
             create)           __artifactory_repo_create ;;
             delete|rm)        __artifactory_repo_delete ;;
+            all)              __artifactory_repo_list ;;
             *)                __apimgr_die "artifactory repo: unknown sub '$sub' (try list|get|delete — create needs raw api)" ;;
           esac ;;
         tag|tags)
@@ -4009,21 +4745,25 @@ __apimgr_dispatch_provider() {
         user)                 __cloudsmith_user_get ;;
         org|namespace)
           case "$sub" in
-            all)              __cloudsmith_org_all ;;
+            all)              APIMGR_ALL="true"; __cloudsmith_org_all ;;
             *)                __cloudsmith_org_get ;;
           esac ;;
         repo|repos|repositories)
           case "$sub" in
-            list)             __cloudsmith_repo_list ;;
+            list)
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __cloudsmith_repo_list ;;
             get|"")           __cloudsmith_repo_get ;;
             create)           __cloudsmith_repo_create ;;
             delete|rm)        __cloudsmith_repo_delete ;;
-            all)              __cloudsmith_repo_all ;;
+            all)              APIMGR_ALL="true"; __cloudsmith_repo_all ;;
             *)                __apimgr_die "cloudsmith repo: unknown sub '$sub' (try list|get|create|delete|all)" ;;
           esac ;;
         tag|tags|package|packages)
           case "$sub" in
-            list|"")          __cloudsmith_tag_list ;;
+            list|"")
+              [ "${1:-}" = "all" ] && APIMGR_ALL="true"
+              __cloudsmith_tag_list ;;
             get|show)         __cloudsmith_tag_get "$1" ;;
             delete|rm)        __cloudsmith_tag_delete "$1" ;;
             *)                __apimgr_die "cloudsmith tag/package: unknown sub '$sub' (try list|get|delete)" ;;
@@ -4138,7 +4878,7 @@ while :; do
     ICON_WARN="[ warn ]"
     ICON_ERROR="[ error ]"
     ICON_QUESTION="[ ? ]"
-    printf_column() { tee | grep '^'; }
+    printf_column() { tee | grep -- '^'; }
     printf_color() { printf '%b' "$1" | tr -d '\t' | sed '/^%b$/d;s,\x1B\[ 0-9;]*[a-zA-Z],,g'; }
     ;;
   --debug)
