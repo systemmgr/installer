@@ -1,5 +1,5 @@
 .\" Manpage for apimgr
-.TH man 1 "04 May 2026" "202605040132-git" "apimgr"
+.TH man 1 "16 May 2026" "202605161200-git" "apimgr"
 
 .SH NAME
 apimgr \- Multi-provider API client for git forges and container registries (think \fBgh\fR, but for everything)
@@ -15,26 +15,42 @@ apimgr \- Multi-provider API client for git forges and container registries (thi
 .B apimgr
 is a single bash entry point to the REST APIs of several code-forge and container-registry providers. The architecture is self-host-first: each provider has an \fBAPIMGR_<PROVIDER>_URL\fR for your private instance (used by default) and an \fBAPIMGR_<PROVIDER>_OFFICIAL_URL\fR for the public service (used when \fB\-\-official\fR is passed). When no provider is given, \fBapimgr\fR auto-detects from the cwd's git remote and falls back to \fBAPIMGR_DEFAULT_PROVIDER\fR.
 
-Currently implemented:
-.B github
-,
-.B gitea
-,
-.B forgejo
-,
-.B codeberg
-(forgejo + codeberg use the gitea API).
-.br
-Stubbed (architecture in place, action functions pending):
-.B gitlab
-,
-.B bitbucket
-,
-.B docker
-,
-.B harbor
-,
-.B quay
+Supported providers:
+.B github\c
+, \c
+.B gitea\c
+, \c
+.B forgejo\c
+, \c
+.B codeberg\c
+, \c
+.B gitee\c
+, \c
+.B pagure\c
+, \c
+.B sourcehut\c
+, \c
+.B onedev\c
+, \c
+.B gitlab\c
+, \c
+.B bitbucket\c
+, \c
+.B docker\c
+, \c
+.B ghcr\c
+, \c
+.B glcr\c
+, \c
+.B harbor\c
+, \c
+.B quay\c
+, \c
+.B cloudsmith\c
+, \c
+.B artifactory\c
+, \c
+.B nexus\c
 .
 
 .SH PROVIDERS
@@ -64,10 +80,10 @@ Sourcehut (sr.ht). Reads \fBSOURCEHUT_API_URL\fR (point at the meta service, e.g
 OneDev (per-instance \fI/~api\fR — modern self-host forge). Reads \fBONEDEV_API_URL\fR + \fBONEDEV_ACCESS_TOKEN\fR (Bearer). Internally OneDev addresses projects by numeric \fIid\fR; apimgr resolves \fB\-\-repo NAME\fR to the id once via \fI/projects?name=...\fR and caches the result in \fB$APIMGR_ONEDEV_PROJECT_ID\fR for the rest of the invocation. Available actions: \fIverify | user | repo [list|get|create|delete] | issue [list|get|create] | pr [list|get] | tag list | api\fR. Limitations: \fIpr create/merge\fR need branch ids and a more complex payload than the generic \fB\-\-branch\fR flag carries — use raw \fIapi\fR; \fItag create/delete\fR similarly aren't wrapped; no \fIorg\fR concept (projects sit at the top level); no first-class \fIrelease\fR API.
 .TP
 .B gitlab
-GitLab. Reads \fBGITLAB_API_URL\fR + \fBGITLAB_ACCESS_TOKEN\fR. Uses \fBPRIVATE-TOKEN\fR auth header (not Bearer). Project paths are URL-encoded (\fIuser/repo\fR → \fIuser%2Frepo\fR), and "groups" map to the apimgr concept of "org".
+GitLab. Reads \fBGITLAB_API_URL\fR + \fBGITLAB_ACCESS_TOKEN\fR. Uses \fBPRIVATE-TOKEN\fR auth header (not Bearer). Project paths are URL-encoded (\fIuser/repo\fR → \fIuser%2Frepo\fR), and "groups" map to the apimgr concept of "org". CI/CD: \fIpipeline list [all] | pipeline delete ID | pipeline delete all\fR.
 .TP
 .B bitbucket
-Bitbucket Cloud (api v2.0). Reads \fBBITBUCKET_API_URL\fR + \fBBITBUCKET_ACCESS_TOKEN\fR (Bearer; OAuth or workspace/repo access tokens). Bitbucket calls orgs "workspaces" — apimgr accepts both \fIorg\fR and \fIworkspace\fR as the action name. State vocabulary differs: PRs use \fIOPEN|MERGED|DECLINED|SUPERSEDED\fR (\fB\-\-state open|closed|merged|all\fR is auto-translated); issues use \fInew|open|resolved|closed|invalid|duplicate|wontfix|on hold\fR (pass through). The PR \fIclose\fR action maps to Bitbucket's \fIdecline\fR. Releases are not supported (Bitbucket has no release API; tags only).
+Bitbucket Cloud (api v2.0). Reads \fBBITBUCKET_API_URL\fR + \fBBITBUCKET_ACCESS_TOKEN\fR (Bearer; OAuth or workspace/repo access tokens). Bitbucket calls orgs "workspaces" — apimgr accepts both \fIorg\fR and \fIworkspace\fR as the action name. State vocabulary differs: PRs use \fIOPEN|MERGED|DECLINED|SUPERSEDED\fR (\fB\-\-state open|closed|merged|all\fR is auto-translated); issues use \fInew|open|resolved|closed|invalid|duplicate|wontfix|on hold\fR (pass through). The PR \fIclose\fR action maps to Bitbucket's \fIdecline\fR. Releases are not supported (Bitbucket has no release API; tags only). CI/CD: \fIpipeline list [all]\fR only — Bitbucket Cloud does not expose a delete endpoint for pipelines.
 .TP
 .B docker
 Docker Hub (api v2). Reads \fBDOCKER_API_URL\fR + \fBDOCKER_USERNAME\fR + \fBDOCKER_HUB_API_KEY\fR. Authenticates by POSTing \fI/users/login\fR with username+token (a Personal Access Token works as the password) to obtain a JWT, which is cached in \fB$APIMGR_DOCKER_JWT\fR for the duration of the invocation and discarded on exit. Provides \fIverify | user | org/namespace | repo/repos/repositories/image/images | tag/tags | api\fR. Issues / PRs / releases are not applicable to a registry.
@@ -104,10 +120,10 @@ Get a user's profile. Defaults to the authed user; pass \fB\-\-user NAME\fR to l
 .B org [get|all]
 \fBget\fR returns a single org's metadata; \fBall\fR lists every repo in that org. Both require \fB\-\-org NAME\fR.
 .TP
-.B repo [list|get|create|delete|all]
+.B repo [list [all]|get|create|delete|all]
 .RS
 .IP \(bu 2
-\fBlist\fR — your repos (or \fB\-\-user NAME\fR's repos)
+\fBlist [all]\fR — your repos (or \fB\-\-user NAME\fR's repos). Append \fBall\fR to paginate every page.
 .IP \(bu 2
 \fBget\fR — a single repo's details (\fB\-\-repo USER/REPO\fR or auto-detect from cwd)
 .IP \(bu 2
@@ -115,13 +131,13 @@ Get a user's profile. Defaults to the authed user; pass \fB\-\-user NAME\fR to l
 .IP \(bu 2
 \fBdelete\fR — destructive; prompts unless \fB\-\-force\fR
 .IP \(bu 2
-\fBall\fR — when \fB\-\-org NAME\fR set: every repo in org. Otherwise: same as \fBlist\fR.
+\fBall\fR — when \fB\-\-org NAME\fR set: every repo in org. Otherwise: same as \fBlist all\fR.
 .RE
 .TP
-.B issue [list|get N|create|close N|comment N]
+.B issue [list [all]|get N|create|close N|comment N]
 .RS
 .IP \(bu 2
-\fBlist\fR — issues for the target repo. Filter with \fB\-\-state open|closed|all\fR (default \fIopen\fR), cap with \fB\-\-limit N\fR. PRs are stripped from github/gitea results because they share the \fI/issues\fR endpoint.
+\fBlist [all]\fR — issues for the target repo. Filter with \fB\-\-state open|closed|all\fR (default \fIopen\fR), cap with \fB\-\-limit N\fR. Append \fBall\fR to paginate every page. PRs are stripped from github/gitea results because they share the \fI/issues\fR endpoint.
 .IP \(bu 2
 \fBget N\fR — single issue by number (or by IID for gitlab)
 .IP \(bu 2
@@ -132,10 +148,10 @@ Get a user's profile. Defaults to the authed user; pass \fB\-\-user NAME\fR to l
 \fBcomment N\fR — \fB\-\-body TEXT\fR adds a comment to issue N
 .RE
 .TP
-.B pr [list|get N|create|merge N|close N]
+.B pr [list [all]|get N|create|merge N|close N]
 .RS
 .IP \(bu 2
-\fBlist\fR — PRs (or merge-requests on GitLab) for the target repo. \fB\-\-state open|closed|merged|all\fR (gitlab adds \fImerged\fR; github/gitea use \fIclosed\fR for both rejected and merged).
+\fBlist [all]\fR — PRs (or merge-requests on GitLab) for the target repo. \fB\-\-state open|closed|merged|all\fR. Append \fBall\fR to paginate every page.
 .IP \(bu 2
 \fBget N\fR — single PR/MR by number/IID
 .IP \(bu 2
@@ -146,19 +162,21 @@ Get a user's profile. Defaults to the authed user; pass \fB\-\-user NAME\fR to l
 \fBclose N\fR — close without merging
 .RE
 .TP
-.B release [list|get TAG|create|delete TAG]
+.B release [list [all]|get TAG|create|delete TAG|delete all]
 .RS
 .IP \(bu 2
-\fBlist\fR — releases for the target repo, capped at \fB\-\-limit\fR (default 30)
+\fBlist [all]\fR — releases for the target repo, capped at \fB\-\-limit\fR (default 30). Append \fBall\fR to paginate every page.
 .IP \(bu 2
 \fBget TAG\fR — single release by tag name. github/gitea also accept a numeric release id.
 .IP \(bu 2
 \fBcreate\fR — \fB\-\-tag NAME\fR (required), \fB\-\-title TEXT\fR (defaults to tag), \fB\-\-body TEXT\fR, \fB\-\-branch REF\fR (target ref — github/gitea use \fItarget_commitish\fR; gitlab uses \fIref\fR and defaults to the project's default_branch when omitted)
 .IP \(bu 2
 \fBdelete TAG\fR — delete the release. github/gitea: the underlying git tag is NOT removed; that's a separate \fI/git/refs/tags\fR call. gitlab: deletes the release record only.
+.IP \(bu 2
+\fBdelete all\fR — delete every release in the repo. Prompts unless \fB\-\-force\fR.
 .RE
 .TP
-.B tag [list|get TAG|create|delete TAG]
+.B tag [list [all]|get TAG|create|delete TAG|delete all]
 Tag operations. The same action covers two surfaces depending on provider:
 .RS
 .IP \(bu 2
@@ -166,13 +184,55 @@ Tag operations. The same action covers two surfaces depending on provider:
 .IP \(bu 2
 \fBRegistries\fR (\fBdocker\fR, \fBharbor\fR, \fBquay\fR): \fBimage\fR tags. \fB\-\-repo NAMESPACE/NAME\fR is the image. \fIcreate\fR is not supported via the Hub APIs (image tags are created on \fIdocker push\fR).
 .IP \(bu 2
-\fBlist\fR — tags for the repo
+\fBlist [all]\fR — tags for the repo. Append \fBall\fR to paginate every page.
 .IP \(bu 2
 \fBget TAG\fR — single tag details
 .IP \(bu 2
 \fBcreate\fR — forges only (\fB\-\-tag NAME\fR + \fB\-\-branch\fR required)
 .IP \(bu 2
 \fBdelete TAG\fR — destructive; prompts unless \fB\-\-force\fR
+.IP \(bu 2
+\fBdelete all\fR — delete every tag in the repo. Prompts unless \fB\-\-force\fR.
+.RE
+.TP
+.B actions [list [all]|log view RUN_ID|log delete RUN_ID|log delete all]
+CI/CD workflow run operations. Provider availability:
+.RS
+.IP \(bu 2
+\fBgithub\fR — full support: list, log view, log delete, log delete all
+.IP \(bu 2
+\fBgitea / forgejo / codeberg\fR — list and log view; log delete is not exposed by the Gitea API
+.IP \(bu 2
+All other providers — not supported (use \fIpipeline\fR for gitlab/bitbucket)
+.RE
+.RS
+.IP \(bu 2
+\fBlist [all]\fR — workflow runs for the target repo. Append \fBall\fR to paginate every page.
+.IP \(bu 2
+\fBlog view RUN_ID\fR — download the run's log archive (ZIP). Follows the 302 redirect to the pre-signed URL and prints the download URL.
+.IP \(bu 2
+\fBlog delete RUN_ID\fR — delete the log archive for one run (github only; 204 on success).
+.IP \(bu 2
+\fBlog delete all\fR — delete logs for every run in the repo (github only). Pages all runs and deletes each.
+.RE
+.TP
+.B pipeline [list [all]|delete ID|delete all]
+CI/CD pipeline operations. Provider availability:
+.RS
+.IP \(bu 2
+\fBgitlab\fR — full support: list, delete ID, delete all. \fBdelete\fR removes the pipeline and all associated jobs, logs, and artifacts.
+.IP \(bu 2
+\fBbitbucket\fR — list only; Bitbucket Cloud does not expose a pipeline delete endpoint.
+.IP \(bu 2
+All other providers — not supported (use \fIactions\fR for github/gitea/forgejo/codeberg)
+.RE
+.RS
+.IP \(bu 2
+\fBlist [all]\fR — pipelines for the target repo. Append \fBall\fR to paginate every page.
+.IP \(bu 2
+\fBdelete ID\fR — delete one pipeline with all its jobs, logs, and artifacts (gitlab only).
+.IP \(bu 2
+\fBdelete all\fR — delete every pipeline in the repo (gitlab only). Pages all pipelines and deletes each.
 .RE
 .TP
 .B api PATH
@@ -196,16 +256,19 @@ Override the configured auth token for this invocation.
 Use the public service for the chosen provider (overrides the self-host URL).
 .TP
 .B \-\-title \fI\,TEXT\/\fR
-Title for create-issue / create-pr (planned actions).
+Title for create-issue / create-pr.
 .TP
 .B \-\-body \fI\,TEXT\/\fR
 Body / description for create-* actions.
 .TP
 .B \-\-state \fIopen|closed|all\fR
-List filter (planned actions).
+List filter for issues, PRs, and repos.
 .TP
 .B \-\-limit \fI\,N\/\fR
 Cap result count. Default \fBAPIMGR_DEFAULT_LIMIT\fR (30).
+.TP
+.B \-\-all
+Fetch every page for list operations, ignoring \fB\-\-limit\fR. Equivalent to appending \fBall\fR as a positional argument after the verb.
 .TP
 .B \-\-branch \fI\,NAME\/\fR
 Source branch for \fIpr create\fR (the branch the PR is from).
@@ -223,7 +286,7 @@ For \fIrepo create\fR. Default: public.
 Force the provider when \fB$1\fR is an action (overrides auto-detect).
 .TP
 .B \-\-force
-Skip confirmation on destructive ops (e.g. \fIrepo delete\fR).
+Skip confirmation on destructive ops (e.g. \fIrepo delete\fR, \fItag delete all\fR).
 .TP
 .B \-\-help, \-\-version, \-\-config, \-\-reset-config, \-\-options, \-\-debug, \-\-no-color
 Standard meta-flags.
@@ -286,7 +349,7 @@ Generated by \fB\-\-config\fR. Sourced on every run.
 Optional. Sourced \fIbefore\fR settings.conf so secrets stay outside the per-script config dir. Use mode 0600.
 
 .SH AUTO-DETECTION
-When the first arg is a known action (\fBverify, user, org, repo, issue, pr, release, api\fR) instead of a provider, \fBapimgr\fR runs:
+When the first arg is a known action (\fBverify\fR, \fBuser\fR, \fBorg\fR, \fBrepo\fR, \fBissue\fR, \fBpr\fR, \fBrelease\fR, \fBtag\fR, \fBactions\fR, \fBpipeline\fR, \fBapi\fR) instead of a provider, \fBapimgr\fR runs:
 .IP 1.
 \fIgit remote get-url origin\fR in the cwd to identify the provider.
 .IP 2.
@@ -322,6 +385,36 @@ Create a private repo under myorg.
 .TP
 .B apimgr github repo delete --repo me/scratchpad --force
 Delete a repo, skipping the confirmation prompt.
+.TP
+.B apimgr github actions list all
+List every workflow run in the current repo (all pages).
+.TP
+.B apimgr github actions log view 12345678
+Print the download URL for the log archive of run 12345678.
+.TP
+.B apimgr github actions log delete 12345678
+Delete the log archive for run 12345678.
+.TP
+.B apimgr github actions log delete all
+Delete logs for every workflow run in the repo.
+.TP
+.B apimgr gitea actions list all
+List every Actions run on a self-hosted Gitea instance (all pages).
+.TP
+.B apimgr gitea actions log view 42
+Print the download URL for the log archive of Gitea run 42.
+.TP
+.B apimgr gitlab pipeline list all
+List every pipeline in the current GitLab project (all pages).
+.TP
+.B apimgr gitlab pipeline delete 987654
+Delete pipeline 987654 and all its jobs, logs, and artifacts.
+.TP
+.B apimgr gitlab pipeline delete all --force
+Delete every pipeline in the repo, skipping confirmation.
+.TP
+.B apimgr bitbucket pipeline list all
+List every Bitbucket pipeline (all pages; delete is not available on Bitbucket Cloud).
 
 .SH LICENSE
 WTFPL

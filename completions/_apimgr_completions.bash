@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
 # - - - - - - - - - - - - - - - - - - - - - - - - -
-##@Version           :  202605040132-git
+##@Version           :  202605161200-git
 # @@Author           :  Jason Hempstead
 # @@Contact          :  jason@casjaysdev.pro
 # @@License          :  LICENSE.md
@@ -9,11 +9,11 @@
 # @@Copyright        :  Copyright: (c) 2026 Jason Hempstead, Casjays Developments
 # @@Created          :  Saturday, May 02, 2026 00:13 EDT
 # @@File             :  apimgr
-# @@Description      :  
-# @@Changelog        :  
+# @@Description      :
+# @@Changelog        :
 # @@TODO             :  Better documentation
-# @@Other            :  
-# @@Resource         :  
+# @@Other            :
+# @@Resource         :
 # @@Terminal App     :  no
 # @@sudo/root        :  no
 # @@Template         :  completions/system
@@ -29,12 +29,12 @@ _apimgr_completion() {
   #####################################################################
   ___jq() { jq -rc "$@" 2>/dev/null; }
   ___sed_env() { sed 's|"||g;s|.*=||g' 2>/dev/null || false; }
-  ___ls() { ls -A "$1" 2>/dev/null | grep -v '^$' | grep '^' || false; }
+  ___ls() { ls -A "$1" 2>/dev/null | grep -v -- '^$' | grep -- '^' || false; }
   ___curl() { curl -q -LSsf --max-time 1 --retry 0 "$@" 2>/dev/null || return 1; }
-  ___grep_file() { grep --no-filename -vsR '#' "$@" 2>/dev/null | grep '^' || return 1; }
-  ___find_cmd() { find -L "${1:-$CONFDIR/}" -maxdepth ${3:-3} -type ${2:-f} 2>/dev/null | grep '^' || return 1; }
-  ___find_rel() { find -L "${1:-$CONFDIR/}" -maxdepth ${3:-3} -type ${2:-f} -printf "%P\n" 2>/dev/null | grep '^' || return 1; }
-  ___grep_env() { GREP_COLORS="" grep -shE '^.*=*..*$' "$1" 2>/dev/null | grep -v '^#' | grep "${2:-^}" | sed 's|"||g' 2>/dev/null | grep '^' || false; }
+  ___grep_file() { grep --no-filename -vsR -- '#' "$@" 2>/dev/null | grep -- '^' || return 1; }
+  ___find_cmd() { find -L "${1:-$CONFDIR/}" -maxdepth ${3:-3} -type ${2:-f} 2>/dev/null | grep -- '^' || return 1; }
+  ___find_rel() { find -L "${1:-$CONFDIR/}" -maxdepth ${3:-3} -type ${2:-f} -printf "%P\n" 2>/dev/null | grep -- '^' || return 1; }
+  ___grep_env() { GREP_COLORS="" grep -shE -- '^.*=*..*$' "$1" 2>/dev/null | grep -v -- '^#' | grep -- "${2:-^}" | sed 's|"||g' 2>/dev/null | grep -- '^' || false; }
   #####################################################################
   cur="${COMP_WORDS[$COMP_CWORD]}"
   prev="${COMP_WORDS[$COMP_CWORD - 1]}"
@@ -51,9 +51,9 @@ _apimgr_completion() {
   SHORTOPTS+=""
   #####################################################################
   LONGOPTS="--completions --config --reset-config --debug --dir --help --options --no-color --version --force --no- --yes-"
-  LONGOPTS+=" --repo --user --org --token --official --title --body --state --limit --branch --base --tag --format --visibility --provider --api"
+  LONGOPTS+=" --repo --user --org --token --official --title --body --state --limit --branch --base --tag --format --visibility --provider --api --all"
   #####################################################################
-  ARRAY="github gitlab gitea forgejo codeberg gitee pagure sourcehut onedev bitbucket docker ghcr glcr harbor quay cloudsmith artifactory jfrog nexus sonatype verify user org repo issue pr release tag image package component api"
+  ARRAY="github gitlab gitea forgejo codeberg gitee pagure sourcehut onedev bitbucket docker ghcr glcr harbor quay cloudsmith artifactory jfrog nexus sonatype verify user org repo issue pr release tag image package component actions pipeline api"
   ARRAY+=""
   #####################################################################
   LIST="get list create delete all"
@@ -127,7 +127,7 @@ _apimgr_completion() {
       ;;
     github|gitlab|gitea|forgejo|codeberg|gitee|pagure|sourcehut|sr.ht|srht|onedev|bitbucket|docker|ghcr|glcr|harbor|quay|cloudsmith|artifactory|jfrog|nexus|sonatype)
       # After a provider, complete with actions.
-      COMPREPLY=($(compgen -W 'verify user org repo issue pr release tag api' -- "$cur"))
+      COMPREPLY=($(compgen -W 'verify user org repo issue pr release tag actions pipeline api' -- "$cur"))
       return 0
       ;;
     repo)
@@ -143,19 +143,46 @@ _apimgr_completion() {
       return 0
       ;;
     issue)
-      COMPREPLY=($(compgen -W 'list get create close comment' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create close comment all' -- "$cur"))
       return 0
       ;;
     pr|pull|pulls|mr)
-      COMPREPLY=($(compgen -W 'list get create merge close' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create merge close all' -- "$cur"))
       return 0
       ;;
     release|releases|rel)
-      COMPREPLY=($(compgen -W 'list get create delete' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create delete all' -- "$cur"))
       return 0
       ;;
     tag|tags|image|images)
-      COMPREPLY=($(compgen -W 'list get create delete' -- "$cur"))
+      COMPREPLY=($(compgen -W 'list get create delete all' -- "$cur"))
+      return 0
+      ;;
+    actions|action|workflow|workflows|runs)
+      COMPREPLY=($(compgen -W 'list log all' -- "$cur"))
+      return 0
+      ;;
+    pipeline|pipelines|ci|cicd)
+      COMPREPLY=($(compgen -W 'list delete all' -- "$cur"))
+      return 0
+      ;;
+    log|logs)
+      COMPREPLY=($(compgen -W 'view delete' -- "$cur"))
+      return 0
+      ;;
+    view|show|get)
+      # After "log view" — expect a RUN_ID (no useful completions)
+      COMPREPLY=($(compgen -W '' -- "$cur"))
+      return 0
+      ;;
+    delete|del|rm)
+      # After "log delete" or "pipeline delete" — offer "all" or expect an ID
+      COMPREPLY=($(compgen -W 'all' -- "$cur"))
+      return 0
+      ;;
+    list)
+      # After "list" — offer "all" for full pagination
+      COMPREPLY=($(compgen -W 'all' -- "$cur"))
       return 0
       ;;
     *)
